@@ -26,42 +26,46 @@ class AnalyzeUserStories:
         svo = []
 
         for story in filter(str.strip, user_stories):
-            subject, verb, object = "", "", ""
+            subject, verb, object_ = "", "", ""
 
             doc = self.nlp(story.strip())
             story_core_tokens: List[str] = []
-            tokens_to_exclude = {token.i for token in doc if token.dep_ == "advcl"}
+            tokens_to_exclude = {token.i for token in doc if token.dep_ == "advcl"}  # mệnh đề trạng ngữ
             
-
+            advcl_tokens = set()  # để lưu token của advcl (so that, etc)
+            
+            # Lấy toàn bộ token thuộc mệnh đề trạng ngữ
             for token in doc:
-                # Lấy ra các token thuộc mệnh đề trạng ngữ
                 if token.i in tokens_to_exclude:
                     for child in token.subtree:
                         tokens_to_exclude.add(child.i)
-
+                        advcl_tokens.add(child.i)  # lưu để dùng sau
+            
+            # Lọc ra token cốt lõi (không phải advcl)
             for token in doc:
                 if token.i not in tokens_to_exclude:
                     story_core_tokens.append(token.text_with_ws)
             
-            #Phần cần quan tâm đến
+            # Phần cần quan tâm
             story_core = "".join(story_core_tokens).strip()
-
             doc_core = self.nlp(story_core)
 
+            # Tìm subject, verb, object trong mệnh đề chính
             subject = find_subject(doc_core)
-            verb, object = find_verb_object(doc_core)
+            verb, object_ = find_verb_object(doc_core)
 
-            svo.append({"subject": subject, "verb": verb, "object": object})
+            # Nếu không tìm thấy object, thử tìm trong mệnh đề trạng ngữ
+            if not object_ and advcl_tokens:
+                advcl_text = "".join([token.text_with_ws for token in doc if token.i in advcl_tokens]).strip()
+                doc_advcl = self.nlp(advcl_text)
+                _, object_ = find_verb_object(doc_advcl)  # chỉ quan tâm object trong advcl
 
+            svo.append({"subject": subject, "verb": verb, "object": object_})
 
-
-        return svo
-        # phân tích tần xuất object
-        frequency = objects_frequency(svo)
+        # return svo
 
         # đoạn này cần sửa thành tách ra thành 1 thằng là những us bị lỗi 1 thằng là svo hoàn chỉnh
         svo_errors = [item for item in svo if not (item['subject'] and item['verb'] and item['object'])]
-
         #normal check: loại bỏ những thằng bị thiếu object verb hoặc subject
         svo = [item for item in svo if item['subject'] and item['verb'] and item['object']]
 
@@ -72,18 +76,29 @@ class AnalyzeUserStories:
             for j in range(i + 1, len(svo)):
                 for key in ["verb", "object"]:
                     w1, w2 = svo[i][key].lower(), svo[j][key].lower()
+                    if(w1 != w2):
+                        # sim = self.calculate_nonlinear_fusion.calculate(w1, w2, beta1=5.00, beta2=1.30, bias_b=-2.0)
+                        # sim = self.calc_w2v_similarity.calculate(w1, w2)
+                        sim = self.calc_wordnet_similarity.calculate(w1, w2)
 
-                    sim = self.calculate_nonlinear_fusion.calculate(w1, w2, beta1=5.00, beta2=1.30, bias_b=-2.0)
+                        similarity_results.append({
+                            "w1": w1,
+                            "w2": w2,
+                            "sim": float(sim)
+                        })
 
-                    similarity_results.append({
-                        w1, w2, sim
-                    })
+        # return similarity_results
+
+        return [similarity_result for similarity_result in similarity_results if similarity_result["sim"] > 0.5]
 
         ## có thể chọn ra 1 độ tương đồng cố định giả sử >= 0.85 thì sẽ tự động đưa về cùng 1 từ còn dưới thì sẽ cần sự xác nhận của BA
         ## ví dụ như "create" và "add" có độ tương đồng là 0.82 thì sẽ cần BA xác nhận có nên gộp hay không và có thể đưa ra 1 list các từ gọi ý từ wordnet 
         ## tức là các từ sẽ chuẩn hóa về nếu như độ tương đồng cao
         ## và ở ngưỡng phân vân sẽ do người quyết định
 
+
+        # phân tích tần xuất object
+        frequency = objects_frequency(svo)
 
     def generate_association_rules(self, user_stories: List[Dict]):
 

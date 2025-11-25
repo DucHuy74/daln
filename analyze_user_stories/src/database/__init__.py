@@ -24,7 +24,7 @@ class DatabaseManager:
 
         Base.metadata.create_all(bind=self.engine)
 
-    def get_session(self) -> Session: 
+    def get_session(self) -> Session:  # type: ignore
         session = self.SessionLocal()
         try:
             yield session

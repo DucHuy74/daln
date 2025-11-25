@@ -1,7 +1,7 @@
 #Strategy pattern
-from analyze_user_stories.experiment.gridSearch import GridSearchConfig
-from analyze_user_stories.experiment.measureSimilarity import WordSimilarity
-from analyze_user_stories.experiment.similatiryStrategies import Calc_w2v_similarity, Calc_wordnet_similarity, Calculate_assm, Calculate_nonlinear_fusion, Calculate_with_adaptive_weighting
+from experiment.gridSearch import GridSearchConfig
+from experiment.measureSimilarity import WordSimilarity
+from experiment.similatiryStrategies import Calc_w2v_similarity, Calc_wordnet_similarity, Calculate_assm, Calculate_nonlinear_fusion, Calculate_with_adaptive_weighting
 
 class run_experiment:
     def __init__(self, word2Vec):

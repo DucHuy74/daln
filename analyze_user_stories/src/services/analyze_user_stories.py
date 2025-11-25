@@ -1,34 +1,33 @@
 
 
 from ast import List
-from analyze_user_stories.src.utils import find_role, find_verb_object, objects_frequency
-from analyze_user_stories.experiment.similatiryStrategies import Calc_wordnet_similarity, Calc_w2v_similarity, Calculate_nonlinear_fusion
-import logging
+from src.utils import find_subject, find_verb_object, objects_frequency
+from experiment.similatiryStrategies import Calc_wordnet_similarity, Calc_w2v_similarity, Calculate_nonlinear_fusion
 from typing import Dict, List
 
 from mlxtend.preprocessing import TransactionEncoder
 from mlxtend.frequent_patterns import apriori, association_rules
 import pandas as pd
+from src.configs import nlp, word2Vec
+
 
 # user_stories = [
 #     "As a user, I want to create my account so that I can access my account.",
 #     "As an admin, I want to manage user so that I can control access levels.",
 #     "As a user, I want to buy products so that I can find items to purchase."
 # ]
-class analyze_user_stories:
-    def __init__(self, nlp, word2Vec):
+class AnalyzeUserStories:
+    def __init__(self):
         self.nlp, self.word2Vec = nlp, word2Vec
         self.calc_wordnet_similarity = Calc_wordnet_similarity()
         self.calc_w2v_similarity = Calc_w2v_similarity(self.word2Vec)
         self.calculate_nonlinear_fusion = Calculate_nonlinear_fusion(self.word2Vec, self.calc_wordnet_similarity, self.calc_w2v_similarity)
     
-
-
     def analyze(self, user_stories: List[str]):
         svo = []
 
         for story in filter(str.strip, user_stories):
-            role, verb, object = "", "", ""
+            subject, verb, object = "", "", ""
 
             doc = self.nlp(story.strip())
             story_core_tokens: List[str] = []
@@ -50,10 +49,10 @@ class analyze_user_stories:
 
             doc_core = self.nlp(story_core)
 
-            role = find_role(doc_core)
+            subject = find_subject(doc_core)
             verb, object = find_verb_object(doc_core)
 
-            svo.append({"role": role, "verb": verb, "object": object})
+            svo.append({"subject": subject, "verb": verb, "object": object})
 
 
 
@@ -61,20 +60,18 @@ class analyze_user_stories:
         # phân tích tần xuất object
         frequency = objects_frequency(svo)
 
-
-
         # đoạn này cần sửa thành tách ra thành 1 thằng là những us bị lỗi 1 thằng là svo hoàn chỉnh
-        svo_errors = [item for item in svo if not (item['role'] and item['verb'] and item['object'])]
+        svo_errors = [item for item in svo if not (item['subject'] and item['verb'] and item['object'])]
 
-        #normal check: loại bỏ những thằng bị thiếu object verb hoặc role
-        svo = [item for item in svo if item['role'] and item['verb'] and item['object']]
+        #normal check: loại bỏ những thằng bị thiếu object verb hoặc subject
+        svo = [item for item in svo if item['subject'] and item['verb'] and item['object']]
 
         similarity_results = []
 
         # Lặp qua từng cặp SVO
         for i in range(len(svo)):
             for j in range(i + 1, len(svo)):
-                for key in ["role", "verb", "object"]:
+                for key in ["verb", "object"]:
                     w1, w2 = svo[i][key].lower(), svo[j][key].lower()
 
                     sim = self.calculate_nonlinear_fusion.calculate(w1, w2, beta1=5.00, beta2=1.30, bias_b=-2.0)
@@ -82,6 +79,11 @@ class analyze_user_stories:
                     similarity_results.append({
                         w1, w2, sim
                     })
+
+        ## có thể chọn ra 1 độ tương đồng cố định giả sử >= 0.85 thì sẽ tự động đưa về cùng 1 từ còn dưới thì sẽ cần sự xác nhận của BA
+        ## ví dụ như "create" và "add" có độ tương đồng là 0.82 thì sẽ cần BA xác nhận có nên gộp hay không và có thể đưa ra 1 list các từ gọi ý từ wordnet 
+        ## tức là các từ sẽ chuẩn hóa về nếu như độ tương đồng cao
+        ## và ở ngưỡng phân vân sẽ do người quyết định
 
 
     def generate_association_rules(self, user_stories: List[Dict]):
@@ -92,8 +94,8 @@ class analyze_user_stories:
 
         
         # user_stories = [
-        #     {"id": 1, "role": "admin", "action": "create", "object": "user"},
-        #     {"id": 2, "role": "user", "action": "delete"},
+        #     {"id": 1, "subject": "admin", "action": "create", "object": "user"},
+        #     {"id": 2, "subject": "user", "action": "delete"},
         #     {"db_id": 3, "action": "update", "object": "profile"},
         # ]
         

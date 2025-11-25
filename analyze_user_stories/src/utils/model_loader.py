@@ -25,7 +25,6 @@ def load_models():
     # word2Vec.save("word2vec-google-news-300.kv")
 
     word2Vec = KeyedVectors.load(str(word2vec_path), mmap='r')
-
     return nlp, word2Vec
     
 

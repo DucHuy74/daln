@@ -1,6 +1,5 @@
-
-
 from ast import List
+from src.utils.model_loader import load_models
 from src.utils import find_subject, find_verb_object, objects_frequency
 from experiment.similatiryStrategies import Calc_wordnet_similarity, Calc_w2v_similarity, Calculate_nonlinear_fusion
 from typing import Dict, List
@@ -8,7 +7,6 @@ from typing import Dict, List
 from mlxtend.preprocessing import TransactionEncoder
 from mlxtend.frequent_patterns import apriori, association_rules
 import pandas as pd
-from src.configs import nlp, word2Vec
 
 
 # user_stories = [
@@ -18,12 +16,13 @@ from src.configs import nlp, word2Vec
 # ]
 class AnalyzeUserStories:
     def __init__(self):
-        self.nlp, self.word2Vec = nlp, word2Vec
+        self.nlp, self.word2Vec = load_models()
         self.calc_wordnet_similarity = Calc_wordnet_similarity()
         self.calc_w2v_similarity = Calc_w2v_similarity(self.word2Vec)
         self.calculate_nonlinear_fusion = Calculate_nonlinear_fusion(self.word2Vec, self.calc_wordnet_similarity, self.calc_w2v_similarity)
-    
-    def analyze(self, user_stories: List[str]):
+    def analyze(self, data):
+
+        user_stories = data.get("user_stories", [])
         svo = []
 
         for story in filter(str.strip, user_stories):
@@ -56,7 +55,7 @@ class AnalyzeUserStories:
 
 
 
-
+        return svo
         # phân tích tần xuất object
         frequency = objects_frequency(svo)
 

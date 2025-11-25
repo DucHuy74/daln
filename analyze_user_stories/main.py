@@ -1,8 +1,5 @@
 from fastapi import FastAPI
 from src.routes.analyze import router
-from src.configs import config
-
-config()
 
 app = FastAPI(title="My Project API")
 

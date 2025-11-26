@@ -1,8 +1,10 @@
 from collections import Counter
 from typing import Optional, Tuple
 
+from fastapi.temp_pydantic_v1_params import Body
 
-def find_role(doc) -> Optional[str]:
+
+def find_subject(doc) -> Optional[str]:
     for token in doc:
         #prep = giới từ
         if token.lower_ == "as" and token.dep_ == "prep":
@@ -78,3 +80,8 @@ def print_similarity_results(title, results):
     print("-" * 50)
     print(f"   Hệ số Tương quan Pearson (r): {results['RG65']['Pearson_r']:.4f}")
     print(f"   Hệ số Tương quan Spearman (p): {results['RG65']['Spearman_rho']:.4f}")
+
+def route_handler(controller):
+    async def handler(data: dict = Body(...)):
+        return controller(data)
+    return handler

@@ -23,6 +23,11 @@
             <artifactId>nckh-application</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.xxxx</groupId>
+            <artifactId>nckh-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 
     <build>

@@ -25,7 +25,7 @@
         </dependency>
         <dependency>
             <groupId>com.xxxx</groupId>
-            <artifactId>nckh-infrastructure</artifactId>
+            <artifactId>nckh-common</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>

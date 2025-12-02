@@ -12,10 +12,10 @@ class RunExperiment:
         self.wordSimilarity = WordSimilarity(word2Vec)
         self.algorithms = algorithms # đây là thuật toán sử dụng để tính toán độ tương đồng
 
-    def excute(self):
+    def excute(self, beta1_space, beta2_space, bias_b_space):
         cached_data = self.wordSimilarity.extract_raw_scores(self.calc_wordnet_similarity, self.calc_w2v_similarity)
 
-        gridSearchConfig = GridSearchConfig(cached_data)
+        gridSearchConfig = GridSearchConfig(cached_data, beta1_space, beta2_space, bias_b_space)
 
         gridSearchConfig.parallel_grid_search()
         # print_similarity_results("Word2Vec method",wordSimilarity.run(calculate_nonlinear_fusion))

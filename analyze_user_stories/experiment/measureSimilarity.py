@@ -52,6 +52,8 @@ class WordSimilarity:
         r, p_value = pearsonr(X_i, Y_i)
         return r
 
+
+    ## dành riêng cho cách tiếp cận của mình tránh việc gridserach trên các beta và phải tính lại những giá trị tương đòng bằng wordnet và word2vec
     def extract_raw_scores(self, strategyWordnet: AlgorithmsStrategy, strategyWord2Vec: AlgorithmsStrategy):
         dataset_configs = {
             "RG65":      (self.df_study_rg65,    4.0, 'Word 1', 'Word 2'),
@@ -68,26 +70,20 @@ class WordSimilarity:
             sim_word2vec_list = []
             human_score_list = []
 
-            # Duyệt qua từng dòng của dataset hiện tại
             for index, row in df.iterrows():
                 w1 = row[col_w1]
                 w2 = row[col_w2]
                 
-                # 1. Tính điểm từ WordNet
                 s1 = strategyWordnet.calculate(w1, w2)
                 
-                # 2. Tính điểm từ Word2Vec
                 s2 = strategyWord2Vec.calculate(w1, w2)
                 
-                # 3. Lấy điểm Human và chuẩn hóa luôn (về thang 0-1 hoặc giữ nguyên tùy bạn)
-                # Theo code cũ của bạn là chia cho scale (10 hoặc 4)
                 h_score = row['Human_Score_Xi'] / scale_factor
 
                 sim_wordnet_list.append(s1)
                 sim_word2vec_list.append(s2)
                 human_score_list.append(h_score)
 
-            # Lưu vào dictionary dưới dạng Numpy Array (quan trọng để chạy nhanh)
             cached_data[name] = {
                 'sim_wn': np.array(sim_wordnet_list, dtype=np.float64),
                 'sim_w2v': np.array(sim_word2vec_list, dtype=np.float64),
@@ -120,10 +116,7 @@ class WordSimilarity:
             w1 = row['Word 1']
             w2 = row['Word 2']
 
-            if beta1 is not None and beta2 is not None and bias_b is not None:
-                score = strategy.calculate(w1, w2, beta1=beta1, beta2=beta2, bias_b=bias_b)
-            else:
-                score = strategy.calculate(w1, w2)
+            score = strategy.calculate(w1, w2)
 
             algorithm_scores_Yi_Rg65.append(score)
             

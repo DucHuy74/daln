@@ -9,13 +9,13 @@ from scipy.stats import pearsonr, spearmanr
 
 # cấu hình để chạy phương pháp phi tuyến tính với nhiều process chọn ra con số tối ưu nhất
 class GridSearchConfig:
-    def __init__(self, cached_data):
+    def __init__(self, cached_data, beta1_space, beta2_space, bias_b_space):
         self.cached_data = cached_data
         # có thể set phạm vi search của beta1, beta2, bias_b ở đây
         # tránh việc set range quá lớn và bước nhảy quá nhỏ
-        beta1_space = np.arange(4, 5.1, 0.1)
-        beta2_space = np.arange(0.5, 1.5, 0.1)
-        bias_b_space = np.arange(-2.5, -1.5, 0.1)
+        self.beta1_space = beta1_space
+        self.beta2_space = beta2_space
+        self.bias_b_space = bias_b_space
         self.all_tasks = []
         for b1 in beta1_space:
             for b2 in beta2_space:

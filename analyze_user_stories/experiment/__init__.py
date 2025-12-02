@@ -3,7 +3,7 @@ from experiment.gridSearch import GridSearchConfig
 from experiment.measureSimilarity import WordSimilarity
 from experiment.similatiryStrategies import Calc_w2v_similarity, Calc_wordnet_similarity, Calculate_assm, Calculate_nonlinear_fusion, Calculate_with_adaptive_weighting
 
-class run_experiment:
+class RunExperiment:
     def __init__(self, word2Vec):
         self.calc_wordnet_similarity = Calc_wordnet_similarity()
         self.calc_w2v_similarity = Calc_w2v_similarity(word2Vec)
@@ -24,8 +24,6 @@ class run_experiment:
 
 
         gridSearchConfig = GridSearchConfig(self.wordSimilarity, self.calculate_nonlinear_fusion)
-
-
 
         gridSearchConfig.parallel_grid_search()
         # print_similarity_results("Word2Vec method",wordSimilarity.run(calculate_nonlinear_fusion))

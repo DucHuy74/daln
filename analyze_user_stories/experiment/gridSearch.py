@@ -10,6 +10,8 @@ class GridSearchConfig:
     def __init__(self, wordSimilarity, calculate_nonlinear_fusion):
         self.wordSimilarity = wordSimilarity
         self.calculate_nonlinear_fusion = calculate_nonlinear_fusion
+        # có thể set phạm vi search của beta1, beta2, bias_b ở đây
+        # tránh việc set range quá lớn và bước nhảy quá nhỏ
         beta1_space = np.arange(4, 5.1, 0.1)
         beta2_space = np.arange(0.5, 1.5, 0.1)
         bias_b_space = np.arange(-2.5, -1.5, 0.1)
@@ -39,6 +41,7 @@ class GridSearchConfig:
 
     # print(f"Total tasks to process: {all_tasks[0]} and len of tasks: {len(all_tasks)}")
     def worker(self, params):
+        print(f"Processing with params: {params}")
         beta1, beta2, bias_b = params
 
         result_nonlinear_fusion_method = self.wordSimilarity.run(self.calculate_nonlinear_fusion, beta1=beta1, beta2=beta2, bias_b=bias_b)
@@ -88,4 +91,4 @@ class GridSearchConfig:
         print(f"   Tham số Tối ưu: Beta1={best_params[0]:.2f}, Beta2={best_params[1]:.2f}, Bias={best_params[2]:.2f}")
         print(f"Best result: {best_result}")
         print("=" * 50)
-        return beta1_coords, beta2_coords, total_scores
+        return best_result

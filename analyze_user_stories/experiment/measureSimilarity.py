@@ -1,29 +1,41 @@
 import pandas as pd
 from scipy.stats import spearmanr, pearsonr
-
+import json
 from interface.interface import AlgorithmsStrategy
 
 class WordSimilarity:
     def __init__(self, word2Vec):
         self.word2Vec = word2Vec
-        self.load_sim353_dataset('./wordsim353/set2.csv')
+        self.load_sim353_dataset('./experiment/dataset/wordsim353/combined.csv')
         # self.load_sim353_dataset('./Wordsim353-cs/WordSim353-cs.csv')
-        self.load_rg65_dataset('./EN-RG-65.txt')
-            
+        self.load_rg65_dataset('./experiment/dataset/EN-RG-65.txt')
+        self.load_mc30_dataset('./experiment/dataset/MC-30.json')
+        
 
     def load_sim353_dataset(self, filepath):
         df = pd.read_csv(filepath, sep=',')
         self.df_study_sim353 = df[['Word 1', 'Word 2', 'Human (mean)']].copy()
         self.df_study_sim353.rename(columns={'Human (mean)': 'Human_Score_Xi'}, inplace=True)
-    # def load_sim353_dataset(self, filepath):
-    #     df = pd.read_csv(filepath, sep=',')
-    #     self.df_study_sim353 = df[['en_word_1', 'en_word_2', 'en mean']].copy()
-    #     self.df_study_sim353.rename(columns={'en mean': 'Human_Score_Xi', 'en_word_1': 'Word 1', 'en_word_2': 'Word 2'}, inplace=True)
-
     def load_rg65_dataset(self, filepath):
         df = pd.read_csv(filepath, sep=r'\s+', names=['Word 1', 'Word 2', 'Human (mean)'])
         self.df_study_rg65 = df[['Word 1', 'Word 2', 'Human (mean)']].copy()
         self.df_study_rg65.rename(columns={'Human (mean)': 'Human_Score_Xi'}, inplace=True)
+    def load_mc30_dataset(self, filepath):
+        with open(filepath, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        # Nếu file JSON có dạng:
+        # [
+        #   {"w1": "car", "w2": "automobile", "score": 9.0},
+        #   ...
+        # ]
+        dataset = []
+        for item in data:
+            w1 = item.get("term1")
+            w2 = item.get("term2")
+            score = item.get("value")
+            dataset.append((w1, w2, score))
+        self.df_study_mc30 = pd.DataFrame(dataset, columns=['Word 1', 'Word 2', 'Human_Score_Xi'])
 
     def calculate_spearman_rho(self, X_i, Y_i):
         rho, p_value = spearmanr(X_i, Y_i)

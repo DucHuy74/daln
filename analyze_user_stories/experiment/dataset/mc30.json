@@ -1,0 +1,152 @@
+[
+  {
+    "term1": "car",
+    "term2": "automobile",
+    "value": 3.92
+  },
+  {
+    "term1": "gem",
+    "term2": "jewel",
+    "value": 3.84
+  },
+  {
+    "term1": "journey",
+    "term2": "voyage",
+    "value": 3.84
+  },
+  {
+    "term1": "boy",
+    "term2": "lad",
+    "value": 3.76
+  },
+  {
+    "term1": "coast",
+    "term2": "shore",
+    "value": 3.7
+  },
+  {
+    "term1": "asylum",
+    "term2": "madhouse",
+    "value": 3.61
+  },
+  {
+    "term1": "magician",
+    "term2": "wizard",
+    "value": 3.5
+  },
+  {
+    "term1": "midday",
+    "term2": "noon",
+    "value": 3.42
+  },
+  {
+    "term1": "furnace",
+    "term2": "stove",
+    "value": 3.11
+  },
+  {
+    "term1": "food",
+    "term2": "fruit",
+    "value": 3.08
+  },
+  {
+    "term1": "bird",
+    "term2": "cock",
+    "value": 3.05
+  },
+  {
+    "term1": "bird",
+    "term2": "crane",
+    "value": 2.97
+  },
+  {
+    "term1": "tool",
+    "term2": "implement",
+    "value": 2.95
+  },
+  {
+    "term1": "brother",
+    "term2": "monk",
+    "value": 2.82
+  },
+  {
+    "term1": "lad",
+    "term2": "brother",
+    "value": 1.66
+  },
+  {
+    "term1": "crane",
+    "term2": "implement",
+    "value": 1.68
+  },
+  {
+    "term1": "journey",
+    "term2": "car",
+    "value": 1.16
+  },
+  {
+    "term1": "monk",
+    "term2": "oracle",
+    "value": 1.1
+  },
+  {
+    "term1": "cemetery",
+    "term2": "woodland",
+    "value": 0.95
+  },
+  {
+    "term1": "food",
+    "term2": "rooster",
+    "value": 0.89
+  },
+  {
+    "term1": "coast",
+    "term2": "hill",
+    "value": 0.87
+  },
+  {
+    "term1": "forest",
+    "term2": "graveyard",
+    "value": 0.84
+  },
+  {
+    "term1": "shore",
+    "term2": "woodland",
+    "value": 0.63
+  },
+  {
+    "term1": "monk",
+    "term2": "slave",
+    "value": 0.55
+  },
+  {
+    "term1": "coast",
+    "term2": "forest",
+    "value": 0.42
+  },
+  {
+    "term1": "lad",
+    "term2": "wizard",
+    "value": 0.42
+  },
+  {
+    "term1": "chord",
+    "term2": "smile",
+    "value": 0.13
+  },
+  {
+    "term1": "glass",
+    "term2": "magician",
+    "value": 0.11
+  },
+  {
+    "term1": "rooster",
+    "term2": "voyage",
+    "value": 0.08
+  },
+  {
+    "term1": "noon",
+    "term2": "string",
+    "value": 0.08
+  }
+]

@@ -12,9 +12,9 @@ class GridSearchConfig:
         self.calculate_nonlinear_fusion = calculate_nonlinear_fusion
         # có thể set phạm vi search của beta1, beta2, bias_b ở đây
         # tránh việc set range quá lớn và bước nhảy quá nhỏ
-        beta1_space = np.arange(4, 5.1, 0.1)
-        beta2_space = np.arange(0.5, 1.5, 0.1)
-        bias_b_space = np.arange(-2.5, -1.5, 0.1)
+        beta1_space = np.arange(4, 5.1, 0.5)
+        beta2_space = np.arange(0.5, 1.5, 0.5)
+        bias_b_space = np.arange(-2.5, -1.5, 0.5)
         self.all_tasks = [(b1, b2, b) for b1 in beta1_space for b2 in beta2_space for b in bias_b_space]
         pass
 
@@ -46,11 +46,16 @@ class GridSearchConfig:
 
         result_nonlinear_fusion_method = self.wordSimilarity.run(self.calculate_nonlinear_fusion, beta1=beta1, beta2=beta2, bias_b=bias_b)
 
+        ## tổng độ tương quan p và r của 4 dataset
         total_score = result_nonlinear_fusion_method["Sim353"]["Pearson_r"] + result_nonlinear_fusion_method["Sim353"]["Spearman_rho"] + \
-            result_nonlinear_fusion_method["RG65"]["Pearson_r"] + result_nonlinear_fusion_method["RG65"]["Spearman_rho"]
+            result_nonlinear_fusion_method["RG65"]["Pearson_r"] + result_nonlinear_fusion_method["RG65"]["Spearman_rho"] + \
+            result_nonlinear_fusion_method["MC30"]["Pearson_r"] + result_nonlinear_fusion_method["MC30"]["Spearman_rho"] + \
+            result_nonlinear_fusion_method["SimLex999"]["Pearson_r"] + result_nonlinear_fusion_method["SimLex999"]["Spearman_rho"]
         
         return (total_score, beta1, beta2, bias_b, 
-                    result_nonlinear_fusion_method["Sim353"]["Pearson_r"], result_nonlinear_fusion_method["Sim353"]["Spearman_rho"], result_nonlinear_fusion_method["RG65"]["Pearson_r"], result_nonlinear_fusion_method["RG65"]["Spearman_rho"])
+                    result_nonlinear_fusion_method["Sim353"]["Pearson_r"], result_nonlinear_fusion_method["Sim353"]["Spearman_rho"], result_nonlinear_fusion_method["RG65"]["Pearson_r"], result_nonlinear_fusion_method["RG65"]["Spearman_rho"], 
+                    result_nonlinear_fusion_method["MC30"]["Pearson_r"], result_nonlinear_fusion_method["MC30"]["Spearman_rho"],
+                    result_nonlinear_fusion_method["SimLex999"]["Pearson_r"], result_nonlinear_fusion_method["SimLex999"]["Spearman_rho"])
         
 
 
@@ -73,17 +78,19 @@ class GridSearchConfig:
         for result in results:
             if(result is None): continue
 
-            total, b1, b2, b, r_s, rho_s, r_r, rho_r = result
+            total, b1, b2, b, r_s, rho_s, r_r, rho_r, r_m, rho_m, r_l, rho_l = result
             beta1_coords.append(b1)
             beta2_coords.append(b2)
             total_scores.append(total)
-
+    
             if total > max_total:
                 max_total = total
                 best_params = (b1, b2, b)
                 best_result = {
                     "Sim353": {"Pearson_r": r_s, "Spearman_rho": rho_s},
-                    "RG65": {"Pearson_r": r_r, "Spearman_rho": rho_r}
+                    "RG65": {"Pearson_r": r_r, "Spearman_rho": rho_r},
+                    "MC30": {"Pearson_r": r_m, "Spearman_rho": rho_m},
+                    "SimLex999": {"Pearson_r": r_l, "Spearman_rho": rho_l}
                 }
         print("\n" + "=" * 50)
         print(f"HOÀN THÀNH TÌM KIẾM TỐI ƯU")

@@ -47,13 +47,13 @@ class GridSearchConfig:
         result_nonlinear_fusion_method = self.wordSimilarity.run(self.calculate_nonlinear_fusion, beta1=beta1, beta2=beta2, bias_b=bias_b)
 
         ## tổng độ tương quan p và r của 4 dataset
-        total_score = result_nonlinear_fusion_method["Sim353"]["Pearson_r"] + result_nonlinear_fusion_method["Sim353"]["Spearman_rho"] + \
-            result_nonlinear_fusion_method["RG65"]["Pearson_r"] + result_nonlinear_fusion_method["RG65"]["Spearman_rho"] + \
+        total_score = result_nonlinear_fusion_method["RG65"]["Pearson_r"] + result_nonlinear_fusion_method["RG65"]["Spearman_rho"] + \
             result_nonlinear_fusion_method["MC30"]["Pearson_r"] + result_nonlinear_fusion_method["MC30"]["Spearman_rho"] + \
             result_nonlinear_fusion_method["SimLex999"]["Pearson_r"] + result_nonlinear_fusion_method["SimLex999"]["Spearman_rho"]
         
+        #                    result_nonlinear_fusion_method["Sim353"]["Pearson_r"], result_nonlinear_fusion_method["Sim353"]["Spearman_rho"],
         return (total_score, beta1, beta2, bias_b, 
-                    result_nonlinear_fusion_method["Sim353"]["Pearson_r"], result_nonlinear_fusion_method["Sim353"]["Spearman_rho"], result_nonlinear_fusion_method["RG65"]["Pearson_r"], result_nonlinear_fusion_method["RG65"]["Spearman_rho"], 
+                    result_nonlinear_fusion_method["RG65"]["Pearson_r"], result_nonlinear_fusion_method["RG65"]["Spearman_rho"], 
                     result_nonlinear_fusion_method["MC30"]["Pearson_r"], result_nonlinear_fusion_method["MC30"]["Spearman_rho"],
                     result_nonlinear_fusion_method["SimLex999"]["Pearson_r"], result_nonlinear_fusion_method["SimLex999"]["Spearman_rho"])
         
@@ -78,7 +78,7 @@ class GridSearchConfig:
         for result in results:
             if(result is None): continue
 
-            total, b1, b2, b, r_s, rho_s, r_r, rho_r, r_m, rho_m, r_l, rho_l = result
+            total, b1, b2, b, r_r, rho_r, r_m, rho_m, r_l, rho_l = result
             beta1_coords.append(b1)
             beta2_coords.append(b2)
             total_scores.append(total)
@@ -87,7 +87,7 @@ class GridSearchConfig:
                 max_total = total
                 best_params = (b1, b2, b)
                 best_result = {
-                    "Sim353": {"Pearson_r": r_s, "Spearman_rho": rho_s},
+                    # "Sim353": {"Pearson_r": r_s, "Spearman_rho": rho_s},
                     "RG65": {"Pearson_r": r_r, "Spearman_rho": rho_r},
                     "MC30": {"Pearson_r": r_m, "Spearman_rho": rho_m},
                     "SimLex999": {"Pearson_r": r_l, "Spearman_rho": rho_l}

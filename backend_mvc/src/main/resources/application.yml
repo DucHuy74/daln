@@ -1,0 +1,19 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+spring:
+  #DBS
+  datasource:
+    url: jdbc:mysql://mysql-8e71a54-nguyen2202794-ed02.j.aivencloud.com:14587/defaultdb?ssl-mode=REQUIRED
+    username: avnadmin
+    password: AVNS_x_4VnTCYfZ-wJQGKF5-
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+jwt:
+  signerKey: "NvA0zmn47/pCr6s1tEoJWPUFL05jPQEsG49afmjsfGjvv0tNWlNvmDsaj9WwffQH"

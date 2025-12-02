@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 from scipy.stats import spearmanr, pearsonr
 import json
@@ -51,6 +52,52 @@ class WordSimilarity:
         r, p_value = pearsonr(X_i, Y_i)
         return r
 
+    def extract_raw_scores(self, strategyWordnet: AlgorithmsStrategy, strategyWord2Vec: AlgorithmsStrategy):
+        dataset_configs = {
+            "RG65":      (self.df_study_rg65,    4.0, 'Word 1', 'Word 2'),
+            "MC30":      (self.df_study_mc30,    4.0, 'Word 1', 'Word 2'),
+            "SimLex999": (self.df_study_simlex999, 10.0, 'word1', 'word2')
+        }
+
+        cached_data = {}
+
+        for name, (df, scale_factor, col_w1, col_w2) in dataset_configs.items():
+            if df is None: continue # Bỏ qua nếu chưa load dataset
+
+            sim_wordnet_list = []
+            sim_word2vec_list = []
+            human_score_list = []
+
+            # Duyệt qua từng dòng của dataset hiện tại
+            for index, row in df.iterrows():
+                w1 = row[col_w1]
+                w2 = row[col_w2]
+                
+                # 1. Tính điểm từ WordNet
+                s1 = strategyWordnet.calculate(w1, w2)
+                
+                # 2. Tính điểm từ Word2Vec
+                s2 = strategyWord2Vec.calculate(w1, w2)
+                
+                # 3. Lấy điểm Human và chuẩn hóa luôn (về thang 0-1 hoặc giữ nguyên tùy bạn)
+                # Theo code cũ của bạn là chia cho scale (10 hoặc 4)
+                h_score = row['Human_Score_Xi'] / scale_factor
+
+                sim_wordnet_list.append(s1)
+                sim_word2vec_list.append(s2)
+                human_score_list.append(h_score)
+
+            # Lưu vào dictionary dưới dạng Numpy Array (quan trọng để chạy nhanh)
+            cached_data[name] = {
+                'sim_wn': np.array(sim_wordnet_list, dtype=np.float64),
+                'sim_w2v': np.array(sim_word2vec_list, dtype=np.float64),
+                'human': np.array(human_score_list, dtype=np.float64)
+            }
+            
+            print(f"   -> Đã cache xong {name}: {len(sim_wordnet_list)} cặp từ.")
+
+        print("Hoàn tất trích xuất dữ liệu.")
+        return cached_data
     
     def run(self, strategy: AlgorithmsStrategy, beta1=None, beta2=None, bias_b=None):
         # algorithm_scores_Yi_Sim353 = []

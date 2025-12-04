@@ -1,5 +1,6 @@
 package com.xxxx.backend_mvc.configuration;
 
+import com.xxxx.backend_mvc.filter.ApiKeyFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,6 +28,9 @@ public class SecurityConfig {
     @Autowired
     private CustomJwtDecoder customJwtDecoder;
 
+    @Autowired
+    private ApiKeyFilter apiKeyFilter;
+
     // cau hinh de quyet dinh endpoint nao can bao ve, nhung endpoint nao cho users
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
@@ -37,6 +41,12 @@ public class SecurityConfig {
                         request.requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS).permitAll()
                                 .anyRequest().authenticated());
 
+        //Luong xu ly: Request → ApiKeyFilter (check x-api-key) → Security / JWT → Controller
+        httpSecurity.addFilterBefore(apiKeyFilter,
+                org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
+
+        // lay token tu header Authorization
+        // tu dong goi customJwtDecoder.decode(token) cho mọi request
         httpSecurity.oauth2ResourceServer(oauth2 ->
                 oauth2.jwt(jwtConfigurer ->
                                 jwtConfigurer.decoder(customJwtDecoder)

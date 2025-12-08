@@ -8,11 +8,15 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-public interface PermissionRepository{
-    Optional<Permission> findById(String id);
+public interface PermissionRepository {
+
     Optional<Permission> findByName(String name);
-    List<Permission> findAllById(Set<String> ids);
+
+    List<Permission> findAllByNameIn(Set<String> names);
+
     Permission save(Permission permission);
+
     List<Permission> findAll();
-    void deleteById(String id);
+
+    void deleteByName(String name);
 }

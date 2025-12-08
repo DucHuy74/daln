@@ -10,10 +10,7 @@ import java.util.Set;
 
 @Repository
 public interface PermissionJPAMapper extends JpaRepository<Permission, String> {
-    Optional<Permission> findById(String id);
     Optional<Permission> findByName(String name);
-    List<Permission> findAllById(Set<String> ids);
-    Permission save(Permission permission);
-    List<Permission> findAll();
-    void deleteById(String id);
+
+    List<Permission> findAllByNameIn(Set<String> names);
 }

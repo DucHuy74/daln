@@ -39,6 +39,6 @@ public class PermissionAppServiceImpl implements PermissionAppService {
 
     @Override
     public void delete(String permissionName) {
-        permissionRepository.deleteById(permissionName);
+        permissionRepository.deleteByName(permissionName);
     }
 }

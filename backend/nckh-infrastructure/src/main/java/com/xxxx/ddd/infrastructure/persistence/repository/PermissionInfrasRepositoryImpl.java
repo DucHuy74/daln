@@ -21,18 +21,13 @@ public class PermissionInfrasRepositoryImpl implements PermissionRepository {
     private final PermissionJPAMapper jpa;
 
     @Override
-    public Optional<Permission> findById(String id) {
-        return jpa.findById(id);
-    }
-
-    @Override
-    public Optional<Permission> findByName(String name) {   // ⭐ ADD IMPLEMENTATION
+    public Optional<Permission> findByName(String name) {
         return jpa.findByName(name);
     }
 
     @Override
-    public List<Permission> findAllById(Set<String> ids) {
-        return jpa.findAllById(ids);
+    public List<Permission> findAllByNameIn(Set<String> names) {
+        return jpa.findAllByNameIn(names);
     }
 
     @Override
@@ -46,7 +41,7 @@ public class PermissionInfrasRepositoryImpl implements PermissionRepository {
     }
 
     @Override
-    public void deleteById(String id) {
-        jpa.deleteById(id);
+    public void deleteByName(String name) {
+        jpa.deleteById(name); // name là @Id
     }
 }

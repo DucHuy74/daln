@@ -20,20 +20,17 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableMethodSecurity
 @ComponentScan("com.xxxx.ddd.infrastructure.config")
 public class SecurityConfig {
-    private final String[] PUBLIC_ENDPOINTS = {"/users",
+    private static final String[] PUBLIC_ENDPOINTS = {
+            "/users",
             "/auth/token", "/auth/introspect", "/auth/logout", "/auth/refresh"
     };
 
-    @Autowired(required = false)
-    private CustomJwtDecoder customJwtDecoder;
+    private final CustomJwtDecoder customJwtDecoder;
 
-    @Bean
-    public CustomJwtDecoder customJwtDecoder() {
-        return new CustomJwtDecoder();
+    public SecurityConfig(CustomJwtDecoder customJwtDecoder) {
+        this.customJwtDecoder = customJwtDecoder;
     }
 
-
-    // cau hinh de quyet dinh endpoint nao can bao ve, nhung endpoint nao cho users
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity.authorizeHttpRequests(request ->
@@ -42,20 +39,19 @@ public class SecurityConfig {
 
         httpSecurity.oauth2ResourceServer(oauth2 ->
                 oauth2.jwt(jwtConfigurer ->
-                                jwtConfigurer.decoder(customJwtDecoder)
-                                        .jwtAuthenticationConverter(jwtAuthenticationConverter()))
-                        .authenticationEntryPoint(new JwtAuthenticationEntryPoint())
+                        jwtConfigurer.decoder(customJwtDecoder)
+                                .jwtAuthenticationConverter(jwtAuthenticationConverter())
+                ).authenticationEntryPoint(new JwtAuthenticationEntryPoint())
         );
+
         httpSecurity.csrf(AbstractHttpConfigurer::disable);
 
         return httpSecurity.build();
     }
 
-
     @Bean
     JwtAuthenticationConverter jwtAuthenticationConverter(){
         JwtGrantedAuthoritiesConverter jwtGrantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
-        //customize
         jwtGrantedAuthoritiesConverter.setAuthorityPrefix("");
 
         JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();

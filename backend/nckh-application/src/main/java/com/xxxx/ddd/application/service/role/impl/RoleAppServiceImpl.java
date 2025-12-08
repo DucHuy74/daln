@@ -30,7 +30,7 @@ public class RoleAppServiceImpl implements RoleAppService {
     public RoleResponse create(RoleRequest request) {
         Role role = roleMapper.toRole(request);
 
-        var permissions = permissionRepository.findAllById(request.getPermissions());
+        var permissions = permissionRepository.findAllByNameIn(request.getPermissions());
         role.setPermissions(new HashSet<>(permissions));
 
         Role savedRole = roleRepository.save(role);

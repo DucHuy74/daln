@@ -23,6 +23,11 @@
             <artifactId>nckh-controller</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.xxxx</groupId>
+            <artifactId>nckh-infrastructure</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <dependency>
             <groupId>com.mysql</groupId>

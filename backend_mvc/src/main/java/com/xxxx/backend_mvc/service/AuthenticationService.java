@@ -93,17 +93,19 @@ public class AuthenticationService {
     }
 
     public void logout(LogoutRequest request) throws ParseException, JOSEException {
-        var signToken = verifyToken(request.getToken(), true);
+        var signToken = verifyToken(request.getToken(), false);
 
         String jit = signToken.getJWTClaimsSet().getJWTID();
         Date expiryTime = signToken.getJWTClaimsSet().getExpirationTime();
 
         // Tính TTL để Redis tự xoá key khi token hết hạn
         long ttl = expiryTime.getTime() - System.currentTimeMillis();
+        if (ttl < 0) ttl = 0;
 
         //jit: id token, redis giu key dung ttl = time token con han, khi ttl het-> redis xoa
         //opsForValuer: lưu hoặc đọc dữ liệu kiểu String trong Redis.
-        redisTemplate.opsForValue().set(jit, "invalid", ttl, TimeUnit.MILLISECONDS);
+        //Luu vao black list
+        redisTemplate.opsForValue().set(jit, "logout", ttl, TimeUnit.MILLISECONDS);
 
 //        InvalidatedToken invalidatedToken = InvalidatedToken.builder()
 //                .id(jit)
@@ -203,6 +205,8 @@ public class AuthenticationService {
 //        if (invalidatedTokenRepository
 //                .existsById(signedJWT.getJWTClaimsSet().getJWTID()))
 //            throw new AppException(ErrorCode.UNAUTHENTICATED);
+
+        //Nếu logout rồi → token dù còn hạn cũng không dùng được
         String jit = signedJWT.getJWTClaimsSet().getJWTID();
         Object redisValue = redisTemplate.opsForValue().get(jit);
         if (redisValue != null) {

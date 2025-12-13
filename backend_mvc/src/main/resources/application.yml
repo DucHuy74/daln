@@ -4,6 +4,9 @@
       context-path: /api
 
   spring:
+    config:
+      import: optional:dotenv:.env
+
     #Redis
     data:
       redis:
@@ -34,7 +37,29 @@
         ddl-auto: update
       show-sql: true
 
+    mail:
+      host: smtp.gmail.com
+      port: 587
+      username: "hoangleduchuy@gmail.com"
+      password: "txredpmukocabgjs"
+      properties:
+        mail:
+          smtp:
+            auth: true
+            starttls:
+              enable: true
+
+
   jwt:
     signerKey: "NvA0zmn47/pCr6s1tEoJWPUFL05jPQEsG49afmjsfGjvv0tNWlNvmDsaj9WwffQH"
     valid-duration: 3600 # in second
     refreshable-duration: 36000 # in seconds
+
+  jobrunr:
+    background-job-server:
+      enabled: true
+    dashboard:
+      enabled: true
+      port: 8000
+
+

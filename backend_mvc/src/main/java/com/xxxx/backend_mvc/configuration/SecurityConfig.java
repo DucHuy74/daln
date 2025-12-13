@@ -39,6 +39,11 @@ public class SecurityConfig {
 //                .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(request ->
                         request.requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS).permitAll()
+                                .requestMatchers(
+                                        HttpMethod.GET,
+                                        "/invitations/accept",
+                                        "/invitations/deny"
+                                ).permitAll()
                                 .anyRequest().authenticated());
 
         //Luong xu ly: Request → ApiKeyFilter (check x-api-key) → Security / JWT → Controller

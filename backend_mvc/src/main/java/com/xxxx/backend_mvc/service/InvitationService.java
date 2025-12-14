@@ -7,7 +7,10 @@ import com.xxxx.backend_mvc.entity.workspace.WorkspaceMember;
 import com.xxxx.backend_mvc.entity.workspace.WorkspaceRole;
 import com.xxxx.backend_mvc.enums.InvitationStatus;
 import com.xxxx.backend_mvc.enums.WorkspaceRoleType;
+import com.xxxx.backend_mvc.exception.AppException;
+import com.xxxx.backend_mvc.exception.ErrorCode;
 import com.xxxx.backend_mvc.repository.*;
+import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -27,42 +30,48 @@ public class InvitationService {
     UserRepository userRepository;
     WorkspaceRoleRepository workspaceRoleRepository;
 
+    @Transactional
     public String accept(String token) {
 
         WorkspaceInvitation invitation = invitationRepository.findById(token)
-                .orElseThrow(() -> new RuntimeException("Invalid invitation"));
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_INVITE));
 
-        if (invitation.getStatus() != InvitationStatus.PENDING) {
-            throw new RuntimeException("Invitation already processed");
-        }
+        if (invitation.getStatus() != InvitationStatus.PENDING)
+            throw new AppException(ErrorCode.INVITE_USED);
 
-        if (invitation.getExpiredAt().isBefore(Instant.now())) {
-            throw new RuntimeException("Invitation expired");
-        }
+        if (invitation.getExpiredAt().isBefore(Instant.now()))
+            throw new AppException(ErrorCode.INVITE_EXPIRED);
 
         User user = userRepository.findByEmail(invitation.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not registered"));
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
-        Workspace workspace = workspaceRepository.findById(invitation.getWorkspaceId())
-                .orElseThrow(() -> new RuntimeException("Workspace not found"));
+        Workspace workspace = workspaceRepository
+                .findById(invitation.getWorkspaceId())
+                .orElseThrow();
 
-        // check member existed (idempotent)
         if (workspaceMemberRepository
                 .findByWorkspaceIdAndUserId(workspace.getId(), user.getId())
-                .isEmpty()) {
-
-            WorkspaceRole memberRole = workspaceRoleRepository
-                    .findByWorkspaceAndRoleName(workspace, WorkspaceRoleType.MEMBER)
-                    .orElseThrow();
-
-            workspaceMemberRepository.save(
-                    WorkspaceMember.builder()
-                            .workspace(workspace)
-                            .user(user)
-                            .workspaceRole(memberRole)
-                            .build()
-            );
+                .isPresent()) {
+            throw new AppException(ErrorCode.MEMBER_EXISTED);
         }
+
+        WorkspaceRole role = workspaceRoleRepository
+                .findByWorkspaceAndRoleName(workspace, WorkspaceRoleType.MEMBER)
+                .orElseGet(() -> workspaceRoleRepository.save(
+                        WorkspaceRole.builder()
+                                .workspace(workspace)
+                                .roleName(WorkspaceRoleType.MEMBER)
+                                .build()
+                ));
+
+
+        workspaceMemberRepository.save(
+                WorkspaceMember.builder()
+                        .workspace(workspace)
+                        .user(user)
+                        .workspaceRole(role)
+                        .build()
+        );
 
         invitation.setStatus(InvitationStatus.ACCEPTED);
         invitationRepository.save(invitation);

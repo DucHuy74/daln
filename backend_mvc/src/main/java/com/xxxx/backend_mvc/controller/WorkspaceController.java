@@ -4,6 +4,7 @@ import com.xxxx.backend_mvc.dto.request.ApiResponse;
 import com.xxxx.backend_mvc.dto.request.WorkspaceAddMemberRequest;
 import com.xxxx.backend_mvc.dto.request.WorkspaceCreateRequest;
 import com.xxxx.backend_mvc.dto.request.WorkspaceUpdateRequest;
+import com.xxxx.backend_mvc.dto.response.WorkspaceMemberResponse;
 import com.xxxx.backend_mvc.dto.response.WorkspaceResponse;
 import com.xxxx.backend_mvc.entity.workspace.Workspace;
 import com.xxxx.backend_mvc.service.WorkspaceService;
@@ -49,15 +50,18 @@ public class WorkspaceController {
                 .build();
     }
 
-    @PostMapping("/{workspaceId}/members")
-    public ApiResponse<WorkspaceResponse> addMember(
+    @PostMapping("/{workspaceId}/invitations")
+    public ApiResponse<Void> addMember(
             @PathVariable String workspaceId,
             @RequestBody WorkspaceAddMemberRequest request) {
 
-        return ApiResponse.<WorkspaceResponse>builder()
-                .result(workspaceService.addMemberToWorkspace(workspaceId, request))
+        workspaceService.inviteMemberToWorkspace(workspaceId, request);
+
+        return ApiResponse.<Void>builder()
+                .message("Invitation sent successfully")
                 .build();
     }
+
 
     @GetMapping
     public ApiResponse<List<WorkspaceResponse>> getAllWorkspaces() {
@@ -73,4 +77,14 @@ public class WorkspaceController {
                 .message("Workspace deleted successfully")
                 .build();
     }
+
+    @GetMapping("/{workspaceId}/members")
+    public ApiResponse<List<WorkspaceMemberResponse>> getMembers(
+            @PathVariable String workspaceId
+    ) {
+        return ApiResponse.<List<WorkspaceMemberResponse>>builder()
+                .result(workspaceService.getMembers(workspaceId))
+                .build();
+    }
+
 }

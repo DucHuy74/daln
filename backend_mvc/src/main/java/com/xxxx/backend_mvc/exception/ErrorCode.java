@@ -19,6 +19,10 @@ public enum ErrorCode {
     NOT_ADMIN_OF_WORKSPACE(1010, "You are not admin of this workspace", HttpStatus.FORBIDDEN),
     NO_PERMISSION(1011, "You do not have permission", HttpStatus.FORBIDDEN),
     MEMBER_EXISTED(1012, "Member existed", HttpStatus.BAD_REQUEST),
+    INVALID_INVITE(1013, "Invalid invite code", HttpStatus.BAD_REQUEST),
+    INVITE_USED(1014, "Invite code has been used", HttpStatus.BAD_REQUEST),
+    INVITE_EXPIRED(1015, "Invite code has expired", HttpStatus.BAD_REQUEST),
+    INVITATION_ALREADY_SENT(1016, "Invitation already sent", HttpStatus.BAD_REQUEST)
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

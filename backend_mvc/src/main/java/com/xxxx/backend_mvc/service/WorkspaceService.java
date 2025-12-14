@@ -4,6 +4,7 @@ package com.xxxx.backend_mvc.service;
 import com.xxxx.backend_mvc.dto.request.WorkspaceAddMemberRequest;
 import com.xxxx.backend_mvc.dto.request.WorkspaceCreateRequest;
 import com.xxxx.backend_mvc.dto.request.WorkspaceUpdateRequest;
+import com.xxxx.backend_mvc.dto.response.WorkspaceMemberResponse;
 import com.xxxx.backend_mvc.dto.response.WorkspaceResponse;
 import com.xxxx.backend_mvc.entity.User;
 import com.xxxx.backend_mvc.entity.workspace.Workspace;
@@ -104,7 +105,7 @@ public class WorkspaceService {
     }
 
     @Transactional
-    public WorkspaceResponse addMemberToWorkspace(
+    public void inviteMemberToWorkspace(
             String workspaceId,
             WorkspaceAddMemberRequest request) {
 
@@ -118,53 +119,33 @@ public class WorkspaceService {
                 .findByWorkspaceIdAndUserId(workspaceId, currentUserId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_ADMIN_OF_WORKSPACE));
 
-        if (currentMember.getWorkspaceRole() == null ||
-                currentMember.getWorkspaceRole().getRoleName() != WorkspaceRoleType.ADMIN) {
+        if (currentMember.getWorkspaceRole().getRoleName() != WorkspaceRoleType.ADMIN) {
             throw new AppException(ErrorCode.NO_PERMISSION);
         }
 
-        User newUser = userRepository.findByEmail(request.getEmail()).orElse(null);
-
-        if (newUser != null) {
-            if (workspaceMemberRepository
-                    .findByWorkspaceIdAndUserId(workspaceId, newUser.getId())
-                    .isPresent()) {
-                throw new AppException(ErrorCode.MEMBER_EXISTED);
-            }
-
-            WorkspaceRole memberRole = workspaceRoleRepository
-                    .findByWorkspaceAndRoleName(workspace, WorkspaceRoleType.MEMBER)
-                    .orElseGet(() -> workspaceRoleRepository.save(
-                            WorkspaceRole.builder()
-                                    .workspace(workspace)
-                                    .roleName(WorkspaceRoleType.MEMBER)
-                                    .build()
-                    ));
-
-            workspaceMemberRepository.save(
-                    WorkspaceMember.builder()
-                            .workspace(workspace)
-                            .user(newUser)
-                            .workspaceRole(memberRole)
-                            .build()
-            );
+        // Không cho gửi invite trùng
+        if (invitationRepository.existsByWorkspaceIdAndEmailAndStatus(
+                workspaceId,
+                request.getEmail(),
+                InvitationStatus.PENDING
+        )) {
+            throw new AppException(ErrorCode.INVITATION_ALREADY_SENT);
         }
 
+        //Tạo invitation
         WorkspaceInvitation invitation = invitationRepository.save(
                 WorkspaceInvitation.builder()
                         .email(request.getEmail())
-                        .workspaceId(workspace.getId())
+                        .workspaceId(workspaceId)
                         .inviterId(currentUserId)
                         .status(InvitationStatus.PENDING)
                         .expiredAt(Instant.now().plus(3, ChronoUnit.DAYS))
                         .build()
         );
 
-        User inviter = userRepository
-                .findById(currentUserId)
-                .orElseThrow();
+        User inviter = userRepository.findById(currentUserId).orElseThrow();
 
-        //ENQUEUE JOB SAU KHI TRANSACTION COMMIT
+        //Gửi mail sau commit
         TransactionSynchronizationManager.registerSynchronization(
                 new TransactionSynchronization() {
                     @Override
@@ -178,8 +159,6 @@ public class WorkspaceService {
                     }
                 }
         );
-
-        return workspaceMapper.toWorkspaceResponse(workspace);
     }
 
 
@@ -227,6 +206,33 @@ public class WorkspaceService {
         }
 
         workspaceRepository.delete(workspace);
+    }
+
+
+    @Transactional
+    public List<WorkspaceMemberResponse> getMembers(String workspaceId) {
+
+        String currentUserId = SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getName();
+
+        WorkspaceMember currentMember = workspaceMemberRepository
+                .findByWorkspaceIdAndUserId(workspaceId, currentUserId)
+                .orElseThrow(() -> new AppException(ErrorCode.NO_PERMISSION));
+
+        // chỉ member mới xem được
+        List<WorkspaceMember> members =
+                workspaceMemberRepository.findAllByWorkspaceId(workspaceId);
+
+        return members.stream()
+                .map(member -> WorkspaceMemberResponse.builder()
+                        .userId(member.getUser().getId())
+                        .email(member.getUser().getEmail())
+                        .role(member.getWorkspaceRole().getRoleName())
+                        .build()
+                )
+                .toList();
     }
 
 

@@ -6,6 +6,7 @@ import com.xxxx.backend_mvc.entity.workspace.WorkspaceInvitation;
 import com.xxxx.backend_mvc.entity.workspace.WorkspaceMember;
 import com.xxxx.backend_mvc.entity.workspace.WorkspaceRole;
 import com.xxxx.backend_mvc.enums.InvitationStatus;
+import com.xxxx.backend_mvc.enums.NotificationType;
 import com.xxxx.backend_mvc.enums.WorkspaceRoleType;
 import com.xxxx.backend_mvc.exception.AppException;
 import com.xxxx.backend_mvc.exception.ErrorCode;
@@ -29,6 +30,7 @@ public class InvitationService {
     WorkspaceRepository workspaceRepository;
     UserRepository userRepository;
     WorkspaceRoleRepository workspaceRoleRepository;
+    NotificationService notificationService;
 
     @Transactional
     public String accept(String token) {
@@ -76,19 +78,39 @@ public class InvitationService {
         invitation.setStatus(InvitationStatus.ACCEPTED);
         invitationRepository.save(invitation);
 
+        notificationService.notifyUser(
+                invitation.getInviterId(),
+                "Invitation accepted",
+                user.getEmail() + " accepted your invitation",
+                NotificationType.INVITATION_ACCEPTED,
+                workspace.getId()
+        );
+
         return workspace.getId();
     }
 
     public void deny(String token) {
 
         WorkspaceInvitation invitation = invitationRepository.findById(token)
-                .orElseThrow(() -> new RuntimeException("Invalid invitation"));
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_INVITE));
 
         if (invitation.getStatus() != InvitationStatus.PENDING) {
-            throw new RuntimeException("Invitation already processed");
+            throw new AppException(ErrorCode.INVITE_USED);
         }
+
+        User user = userRepository.findByEmail(invitation.getEmail())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
         invitation.setStatus(InvitationStatus.REJECTED);
         invitationRepository.save(invitation);
+
+        notificationService.notifyUser(
+                invitation.getInviterId(),
+                "Invitation denied",
+                user.getEmail() + " denied your invitation",
+                NotificationType.INVITATION_DENIED,
+                invitation.getWorkspaceId()
+        );
     }
+
 }

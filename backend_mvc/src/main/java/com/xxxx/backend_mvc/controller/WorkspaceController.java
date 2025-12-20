@@ -1,12 +1,11 @@
 package com.xxxx.backend_mvc.controller;
 
-import com.xxxx.backend_mvc.dto.request.ApiResponse;
+import com.xxxx.backend_mvc.dto.ApiResponse;
 import com.xxxx.backend_mvc.dto.request.WorkspaceAddMemberRequest;
 import com.xxxx.backend_mvc.dto.request.WorkspaceCreateRequest;
 import com.xxxx.backend_mvc.dto.request.WorkspaceUpdateRequest;
 import com.xxxx.backend_mvc.dto.response.WorkspaceMemberResponse;
 import com.xxxx.backend_mvc.dto.response.WorkspaceResponse;
-import com.xxxx.backend_mvc.entity.workspace.Workspace;
 import com.xxxx.backend_mvc.service.WorkspaceService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;

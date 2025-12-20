@@ -1,8 +1,7 @@
 package com.xxxx.backend_mvc.controller;
 
-import com.xxxx.backend_mvc.dto.request.ApiResponse;
+import com.xxxx.backend_mvc.dto.ApiResponse;
 import com.xxxx.backend_mvc.dto.response.NotificationResponse;
-import com.xxxx.backend_mvc.entity.Notification;
 import com.xxxx.backend_mvc.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

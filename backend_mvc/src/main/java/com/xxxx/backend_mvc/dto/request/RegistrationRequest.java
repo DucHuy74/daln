@@ -1,9 +1,9 @@
 package com.xxxx.backend_mvc.dto.request;
 
-import com.xxxx.backend_mvc.validator.DobConstraint;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDate;
 
@@ -12,18 +12,17 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class UserCreationRequest {
-    @Size(min = 3, message = "USERNAME_INVALID")
+public class RegistrationRequest {
+    @Size(min = 4, message = "INVALID_USERNAME")
     String username;
 
-    String email;
-
-    @Size(min = 8, message = "INVALID_PASSWORD")
+    @Size(min = 6, message = "INVALID_PASSWORD")
     String password;
+
+    String email;
     String firstName;
     String lastName;
 
-    @DobConstraint(min = 18, message = "INVALID_DOB")
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     LocalDate dob;
-
 }

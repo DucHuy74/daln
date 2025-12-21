@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/home_page.dart';
+import 'package:frontend/login_screen.dart';
 import 'landingpage.dart';
 
 void main() {
@@ -14,7 +16,12 @@ class MyApp extends StatelessWidget {
       title: 'TaskFlow',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.blue, fontFamily: 'Inter'),
-      home: const LandingPage(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const LandingPage(),
+        '/home': (context) => const HomePage(),
+        '/login': (context) => const LoginPage(),
+      },
     );
   }
 }

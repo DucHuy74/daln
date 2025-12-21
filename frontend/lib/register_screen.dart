@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({Key? key}) : super(key: key);
@@ -12,6 +14,10 @@ class _RegisterPageState extends State<RegisterPage> {
   final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
+  final _dobController = TextEditingController();
+
   bool _obscurePassword = true;
   bool _isLoading = false;
 
@@ -20,30 +26,51 @@ class _RegisterPageState extends State<RegisterPage> {
     _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _dobController.dispose();
     super.dispose();
   }
 
   bool _isMobile(BuildContext context) =>
       MediaQuery.of(context).size.width < 768;
 
-  void _handleRegister() async {
+  Future<void> _handleRegister() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
 
-      // Simule l'appel API
-      await Future.delayed(const Duration(seconds: 2));
+      final body = {
+        "username": _usernameController.text,
+        "password": _passwordController.text,
+        "email": _emailController.text,
+        "firstName": _firstNameController.text,
+        "lastName": _lastNameController.text,
+        "dob": _dobController.text,
+      };
+
+      final response = await http.post(
+        Uri.parse('http://localhost:8080/api/register'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      );
 
       setState(() => _isLoading = false);
 
-      if (mounted) {
+      if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Đăng ký thành công!'),
             backgroundColor: Colors.green,
           ),
         );
-        // Quay lại trang login
         Navigator.pop(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Đăng ký thất bại: ${response.body}'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -137,7 +164,7 @@ class _RegisterPageState extends State<RegisterPage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           const Text(
-            'Đăng ký',
+            'Register',
             style: TextStyle(
               fontSize: 36,
               fontWeight: FontWeight.bold,
@@ -148,7 +175,7 @@ class _RegisterPageState extends State<RegisterPage> {
           Row(
             children: [
               const Text(
-                "Đã có tài khoản? ",
+                "Already have an account? ",
                 style: TextStyle(color: Color(0xFF718096)),
               ),
               GestureDetector(
@@ -156,7 +183,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   Navigator.pop(context);
                 },
                 child: const Text(
-                  'Đăng nhập',
+                  'Login',
                   style: TextStyle(
                     color: Color(0xFF9C27B0),
                     fontWeight: FontWeight.w600,
@@ -167,9 +194,9 @@ class _RegisterPageState extends State<RegisterPage> {
           ),
           const SizedBox(height: 32),
 
-          // Username Field
+          // Username
           const Text(
-            'Tên đăng nhập',
+            'Username',
             style: TextStyle(
               fontWeight: FontWeight.w600,
               color: Color(0xFF2D3748),
@@ -180,7 +207,7 @@ class _RegisterPageState extends State<RegisterPage> {
           TextFormField(
             controller: _usernameController,
             decoration: InputDecoration(
-              hintText: 'Nhập tên đăng nhập',
+              hintText: 'Enter your username',
               prefixIcon: const Icon(
                 Icons.person_outline,
                 color: Color(0xFF9C27B0),
@@ -191,31 +218,62 @@ class _RegisterPageState extends State<RegisterPage> {
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
               ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: Color(0xFF9C27B0),
-                  width: 2,
-                ),
-              ),
             ),
             validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Vui lòng nhập tên đăng nhập';
-              }
-              if (value.length < 3) {
-                return 'Tên đăng nhập phải có ít nhất 3 ký tự';
-              }
+              if (value == null || value.isEmpty)
+                return 'Please enter username';
+              if (value.length < 3)
+                return 'Username must be at least 3 characters';
               return null;
             },
           ),
           const SizedBox(height: 20),
 
-          // Email Field
+          // Password
+          const Text(
+            'Password',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF2D3748),
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: _passwordController,
+            obscureText: _obscurePassword,
+            decoration: InputDecoration(
+              hintText: 'Enter your password',
+              prefixIcon: const Icon(
+                Icons.lock_outline,
+                color: Color(0xFF9C27B0),
+              ),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                  color: const Color(0xFF718096),
+                ),
+                onPressed: () =>
+                    setState(() => _obscurePassword = !_obscurePassword),
+              ),
+              filled: true,
+              fillColor: const Color(0xFFF7FAFC),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty)
+                return 'Please enter password';
+              if (value.length < 6)
+                return 'Password must be at least 6 characters';
+              return null;
+            },
+          ),
+          const SizedBox(height: 20),
+
+          // Email
           const Text(
             'Email',
             style: TextStyle(
@@ -239,33 +297,19 @@ class _RegisterPageState extends State<RegisterPage> {
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
               ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: Color(0xFF9C27B0),
-                  width: 2,
-                ),
-              ),
             ),
             validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Vui lòng nhập email';
-              }
-              if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
-                return 'Vui lòng nhập email hợp lệ';
-              }
+              if (value == null || value.isEmpty) return 'Please enter email';
+              if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value))
+                return 'Please enter valid email';
               return null;
             },
           ),
           const SizedBox(height: 20),
 
-          // Password Field
+          // First Name
           const Text(
-            'Mật khẩu',
+            'First Name',
             style: TextStyle(
               fontWeight: FontWeight.w600,
               color: Color(0xFF2D3748),
@@ -274,22 +318,12 @@ class _RegisterPageState extends State<RegisterPage> {
           ),
           const SizedBox(height: 8),
           TextFormField(
-            controller: _passwordController,
-            obscureText: _obscurePassword,
+            controller: _firstNameController,
             decoration: InputDecoration(
-              hintText: 'Nhập mật khẩu của bạn',
+              hintText: 'Enter your first name',
               prefixIcon: const Icon(
-                Icons.lock_outline,
+                Icons.badge_outlined,
                 color: Color(0xFF9C27B0),
-              ),
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                  color: const Color(0xFF718096),
-                ),
-                onPressed: () {
-                  setState(() => _obscurePassword = !_obscurePassword);
-                },
               ),
               filled: true,
               fillColor: const Color(0xFFF7FAFC),
@@ -297,27 +331,86 @@ class _RegisterPageState extends State<RegisterPage> {
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
               ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+            validator: (value) => (value == null || value.isEmpty)
+                ? 'Please enter first name'
+                : null,
+          ),
+          const SizedBox(height: 20),
+
+          // Last Name
+          const Text(
+            'Last Name',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF2D3748),
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: _lastNameController,
+            decoration: InputDecoration(
+              hintText: 'Enter your last name',
+              prefixIcon: const Icon(
+                Icons.badge_outlined,
+                color: Color(0xFF9C27B0),
               ),
-              focusedBorder: OutlineInputBorder(
+              filled: true,
+              fillColor: const Color(0xFFF7FAFC),
+              border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: Color(0xFF9C27B0),
-                  width: 2,
-                ),
+                borderSide: BorderSide.none,
               ),
             ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Vui lòng nhập mật khẩu';
+            validator: (value) => (value == null || value.isEmpty)
+                ? 'Please enter last name'
+                : null,
+          ),
+          const SizedBox(height: 20),
+
+          // Date of Birth
+          const Text(
+            'Date of Birth',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF2D3748),
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: _dobController,
+            readOnly: true,
+            decoration: InputDecoration(
+              hintText: 'Select date of birth',
+              prefixIcon: const Icon(
+                Icons.calendar_today_outlined,
+                color: Color(0xFF9C27B0),
+              ),
+              filled: true,
+              fillColor: const Color(0xFFF7FAFC),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+            ),
+            onTap: () async {
+              DateTime? pickedDate = await showDatePicker(
+                context: context,
+                initialDate: DateTime(2000),
+                firstDate: DateTime(1900),
+                lastDate: DateTime.now(),
+              );
+              if (pickedDate != null) {
+                _dobController.text = pickedDate.toIso8601String().split(
+                  'T',
+                )[0];
               }
-              if (value.length < 6) {
-                return 'Mật khẩu phải có ít nhất 6 ký tự';
-              }
-              return null;
             },
+            validator: (value) => (value == null || value.isEmpty)
+                ? 'Please select date of birth'
+                : null,
           ),
           const SizedBox(height: 24),
 
@@ -345,7 +438,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                     )
                   : const Text(
-                      'ĐĂNG KÝ',
+                      'REGISTER',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,

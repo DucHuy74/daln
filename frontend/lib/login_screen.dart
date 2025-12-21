@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'register_screen.dart';
+import 'services/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -16,6 +17,8 @@ class _LoginPageState extends State<LoginPage> {
   bool _obscurePassword = true;
   bool _isLoading = false;
 
+  final AuthService _authService = AuthService();
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -27,22 +30,35 @@ class _LoginPageState extends State<LoginPage> {
       MediaQuery.of(context).size.width < 768;
 
   void _handleLogin() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
+    if (!_formKey.currentState!.validate()) return;
 
-      // Simule l'appel API
-      await Future.delayed(const Duration(seconds: 2));
+    setState(() => _isLoading = true);
 
-      setState(() => _isLoading = false);
+    bool success = await _authService.login(
+      username: _emailController.text.trim(),
+      password: _passwordController.text.trim(),
+    );
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Đăng nhập thành công!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
+    setState(() => _isLoading = false);
+
+    if (!mounted) return;
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Đăng nhập thành công!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      // Chuyển sang màn hình chính
+      Navigator.pushReplacementNamed(context, '/home');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Đăng nhập thất bại'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -202,7 +218,7 @@ class _LoginPageState extends State<LoginPage> {
 
           // Email/Username
           const Text(
-            'Email hoặc Tên đăng nhập',
+            'Username/Email',
             style: TextStyle(
               fontWeight: FontWeight.w600,
               color: Color(0xFF2D3748),

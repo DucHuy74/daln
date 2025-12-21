@@ -1,65 +1,68 @@
-  server:
-    port: 8080
-    servlet:
-      context-path: /api
+server:
+  port: 8080
+  servlet:
+    context-path: /api
 
-  spring:
-    config:
-      import: optional:dotenv:.env
+spring:
 
-    #Redis
-    data:
-      redis:
-        host: 127.0.0.1
-        port: 6379
-        username: default
-        password: 123456
-        timeout: 60000
-    #DBS
-    datasource:
-#      url: jdbc:mysql://mysql-8e71a54-nguyen2202794-ed02.j.aivencloud.com:14587/defaultdb?ssl-mode=REQUIRED
-#      username: avnadmin
-#      password: AVNS_x_4VnTCYfZ-wJQGKF5-
-#      driver-class-name: com.mysql.cj.jdbc.Driver
-      url: jdbc:mysql://localhost:3306/be
-      username: root
+  # Redis
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      username: default
       password: 123456
-      hikari:
-        max-lifetime: 1800000      # 30 phút
-        idle-timeout: 600000       # 10 phút
-        keepalive-time: 300000     # 5 phút
-        validation-timeout: 3000   # 3 giây
-        connection-timeout: 20000  # 20 giây - timeout khi lấy connection
-        maximum-pool-size: 10
-      driver-class-name: com.mysql.cj.jdbc.Driver
-    jpa:
-      hibernate:
-        ddl-auto: update
-      show-sql: true
+      timeout: 60000
 
-    mail:
-      host: smtp.gmail.com
-      port: 587
-      username: "hoangleduchuy@gmail.com"
-      password: "txredpmukocabgjs"
-      properties:
-        mail:
-          smtp:
-            auth: true
-            starttls:
-              enable: true
+  # Database
+  datasource:
+    url: jdbc:mysql://localhost:3306/be
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      max-lifetime: 1800000
+      idle-timeout: 600000
+      keepalive-time: 300000
+      validation-timeout: 3000
+      connection-timeout: 20000
+      maximum-pool-size: 10
 
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
 
-  jwt:
-    signerKey: "NvA0zmn47/pCr6s1tEoJWPUFL05jPQEsG49afmjsfGjvv0tNWlNvmDsaj9WwffQH"
-    valid-duration: 3600 # in second
-    refreshable-duration: 36000 # in seconds
+  # Mail
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: "hoangleduchuy@gmail.com"
+    password: "txredpmukocabgjs"
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
-  jobrunr:
-    background-job-server:
-      enabled: true
-    dashboard:
-      enabled: true
-      port: 8000
+  # Keycloak Resource Server
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8180/realms/nckh
 
+# JobRunr
+jobrunr:
+  background-job-server:
+    enabled: true
+  dashboard:
+    enabled: true
+    port: 8000
 
+# Keycloak Identity Provider
+idp:
+  url: http://localhost:8180
+  client-id: nckh_app
+  client-secret: B9OECHjjg8xgjpwGPHCeC5RUMDZeWPAY

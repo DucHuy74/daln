@@ -10,10 +10,13 @@ import java.util.Optional;
 
 @Repository
 public interface WorkspaceMemberRepository extends JpaRepository<WorkspaceMember, String> {
-    Optional<WorkspaceMember> findByWorkspaceIdAndUserId(String workspaceId, String userId);
+    Optional<WorkspaceMember> findByWorkspace_IdAndProfile_UserId(
+            String workspaceId,
+            String userId
+    );
 
-    List<WorkspaceMember> findAllByUserId(String userId);
+    List<WorkspaceMember> findAllByProfile_UserId(String userId);
 
-    List<WorkspaceMember> findAllByWorkspaceId(String workspaceId);
+    List<WorkspaceMember> findAllByWorkspace_Id(String workspaceId);
 
 }

@@ -1,6 +1,6 @@
 package com.xxxx.backend_mvc.entity.workspace;
 
-import com.xxxx.backend_mvc.entity.User;
+import com.xxxx.backend_mvc.entity.Profile;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -26,7 +26,7 @@ public class WorkspaceMember {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
-    User user;
+    Profile profile;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "wsp_id", nullable = false)

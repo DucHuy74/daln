@@ -21,83 +21,28 @@ import java.util.List;
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
-    private final String[] PUBLIC_ENDPOINTS = {"/users",
-            "/auth/token", "/auth/introspect", "/auth/logout", "/auth/refresh"
-    };
+    private final String[] PUBLIC_ENDPOINTS = {"/register"};
 
-    @Autowired
-    private CustomJwtDecoder customJwtDecoder;
-
-    @Autowired
-    private ApiKeyFilter apiKeyFilter;
-
-    // cau hinh de quyet dinh endpoint nao can bao ve, nhung endpoint nao cho users
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
-        httpSecurity
-//                .cors(cors ->cors.configurationSource(corsConfigurationSource()))
-//                .csrf(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(request ->
-                        request.requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS).permitAll()
-                                .requestMatchers(
-                                        HttpMethod.GET,
-                                        "/invitations/accept",
-                                        "/invitations/deny"
-                                ).permitAll()
-                                .anyRequest().authenticated());
+        httpSecurity.authorizeHttpRequests(request -> request.requestMatchers(PUBLIC_ENDPOINTS)
+                .permitAll()
+                .anyRequest()
+                .authenticated());
 
-        //Luong xu ly: Request → ApiKeyFilter (check x-api-key) → Security / JWT → Controller
-        httpSecurity.addFilterBefore(apiKeyFilter,
-                org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
-
-        // lay token tu header Authorization
-        // tu dong goi customJwtDecoder.decode(token) cho mọi request
-        httpSecurity.oauth2ResourceServer(oauth2 ->
-                oauth2.jwt(jwtConfigurer ->
-                                jwtConfigurer.decoder(customJwtDecoder)
-                                        .jwtAuthenticationConverter(jwtAuthenticationConverter()))
-                        .authenticationEntryPoint(new JwtAuthenticationEntryPoint())
-        );
+        httpSecurity.oauth2ResourceServer(oauth2 -> oauth2.jwt(
+                        jwtConfigurer -> jwtConfigurer.jwtAuthenticationConverter(jwtAuthenticationConverter()))
+                .authenticationEntryPoint(new JwtAuthenticationEntryPoint()));
         httpSecurity.csrf(AbstractHttpConfigurer::disable);
 
         return httpSecurity.build();
     }
 
-//    @Bean
-//    public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
-//        org.springframework.web.cors.CorsConfiguration config = new org.springframework.web.cors.CorsConfiguration();
-//
-//        config.setAllowedOriginPatterns(List.of("*"));
-//
-//        config.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-//        config.setAllowedHeaders(java.util.List.of("Authorization", "Content-Type"));
-//        config.setExposedHeaders(java.util.List.of("Authorization"));
-//
-//        config.setAllowCredentials(false);
-//
-//        org.springframework.web.cors.UrlBasedCorsConfigurationSource source =
-//                new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
-//        source.registerCorsConfiguration("/**", config);
-//
-//        return source;
-//    }
-
-
-
     @Bean
-    JwtAuthenticationConverter jwtAuthenticationConverter(){
-        JwtGrantedAuthoritiesConverter jwtGrantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
-        //customize
-        jwtGrantedAuthoritiesConverter.setAuthorityPrefix("");
-
+    public JwtAuthenticationConverter jwtAuthenticationConverter(){
         JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
-        jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(jwtGrantedAuthoritiesConverter);
+        jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(new CustomAuthoritiesConverter());
 
         return jwtAuthenticationConverter;
-    }
-
-    @Bean
-    PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(10);
     }
 }

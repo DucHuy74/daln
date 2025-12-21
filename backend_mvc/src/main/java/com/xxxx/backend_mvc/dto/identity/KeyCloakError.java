@@ -1,4 +1,4 @@
-package com.xxxx.backend_mvc.dto.request;
+package com.xxxx.backend_mvc.dto.identity;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -8,6 +8,6 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class LogoutRequest {
-    String token;
+public class KeyCloakError {
+    String errorMessage;
 }

@@ -22,9 +22,7 @@ public class ApiKeyFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
 
-        return path.startsWith("/api/invitations/")
-                || path.startsWith("/api/auth/")
-                || path.startsWith("/api/users");
+        return path.startsWith("/api/invitations/");
     }
 
     @Override

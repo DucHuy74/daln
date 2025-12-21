@@ -42,7 +42,6 @@ public class WorkspaceService {
     WorkspaceMapper workspaceMapper;
     BackgroundJobService backgroundJobService;
 
-    // ================= HELPER =================
     private String getCurrentUserId() {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
 
@@ -53,7 +52,6 @@ public class WorkspaceService {
         return jwtAuth.getToken().getSubject(); // UUID từ Keycloak (sub)
     }
 
-    // ================= CREATE =================
     @Transactional
     public WorkspaceResponse createWorkspace(WorkspaceCreateRequest request) {
 
@@ -88,7 +86,6 @@ public class WorkspaceService {
         return workspaceMapper.toWorkspaceResponse(workspace);
     }
 
-    // ================= UPDATE =================
     @Transactional
     public WorkspaceResponse updateWorkspace(
             String workspaceId,
@@ -112,7 +109,6 @@ public class WorkspaceService {
         return workspaceMapper.toWorkspaceResponse(workspaceRepository.save(workspace));
     }
 
-    // ================= INVITE =================
     @Transactional
     public void inviteMemberToWorkspace(
             String workspaceId,
@@ -164,7 +160,6 @@ public class WorkspaceService {
         );
     }
 
-    // ================= LIST =================
     public List<WorkspaceResponse> getAllWorkspaces() {
 
         String userId = getCurrentUserId();
@@ -190,7 +185,6 @@ public class WorkspaceService {
                 .toList();
     }
 
-    // ================= DELETE =================
     @Transactional
     public void deleteWorkspace(String workspaceId) {
 
@@ -208,7 +202,6 @@ public class WorkspaceService {
         workspaceRepository.delete(admin.getWorkspace());
     }
 
-    // ================= MEMBERS =================
     public List<WorkspaceMemberResponse> getMembers(String workspaceId) {
 
         String userId = getCurrentUserId();

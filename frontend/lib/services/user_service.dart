@@ -26,7 +26,7 @@ class UserService {
 
     return http.post(
       url,
-      headers: {"Content-Type": "application/json"},
+      // headers: {"Content-Type": "application/json"},
       body: body,
     );
   }

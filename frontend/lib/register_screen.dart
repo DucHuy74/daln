@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({Key? key}) : super(key: key);
@@ -49,8 +50,11 @@ class _RegisterPageState extends State<RegisterPage> {
       };
 
       final response = await http.post(
-        Uri.parse('http://localhost:8080/api/register'),
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse('${dotenv.env['BASE_URL']}/api/register'),
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': dotenv.env['API_KEY']!,
+        },
         body: jsonEncode(body),
       );
 

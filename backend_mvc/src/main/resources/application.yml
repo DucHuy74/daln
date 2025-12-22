@@ -66,3 +66,9 @@ idp:
   url: http://localhost:8180
   client-id: nckh_app
   client-secret: B9OECHjjg8xgjpwGPHCeC5RUMDZeWPAY
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
+    com.xxxx.backend_mvc: DEBUG

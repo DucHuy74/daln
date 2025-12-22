@@ -5,12 +5,11 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 class AuthService {
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
-  final String _clientId = "nckh_app"; // clientId Keycloak
-  final String _issuer = "http://localhost:8180/realms/nckh"; // realm
+  final String _clientId = "nckh_app";
+  final String _issuer = "http://localhost:8180/realms/nckh";
   final String _clientSecret = "B9OECHjjg8xgjpwGPHCeC5RUMDZeWPAY";
   String? _accessToken;
 
-  // Login với username/email + password
   Future<bool> login({
     required String username,
     required String password,

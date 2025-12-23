@@ -2,6 +2,16 @@ import 'package:flutter/material.dart';
 import 'register_screen.dart';
 import 'services/auth_service.dart';
 
+// --- MOCK SERVICE (Dùng để test nếu chưa có file auth_service thật) ---
+/*
+class AuthService {
+  Future<bool> login({required String username, required String password}) async {
+    await Future.delayed(const Duration(seconds: 2));
+    return username.isNotEmpty && password.length >= 6;
+  }
+}
+*/
+
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
 
@@ -13,6 +23,8 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+
+  // State variables
   bool _rememberMe = false;
   bool _obscurePassword = true;
   bool _isLoading = false;
@@ -26,8 +38,8 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  bool _isMobile(BuildContext context) =>
-      MediaQuery.of(context).size.width < 768;
+  bool _isSmallScreen(BuildContext context) =>
+      MediaQuery.of(context).size.width < 800;
 
   void _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
@@ -45,18 +57,16 @@ class _LoginPageState extends State<LoginPage> {
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Đăng nhập thành công!'),
-          backgroundColor: Colors.green,
+          content: Text('Log in successful!'),
+          backgroundColor: Color(0xFF61BD4F),
         ),
       );
-
-      // Chuyển sang màn hình chính
       Navigator.pushReplacementNamed(context, '/home');
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Đăng nhập thất bại'),
-          backgroundColor: Colors.red,
+          content: Text('Login failed. Please check your credentials.'),
+          backgroundColor: Color(0xFFEB5A46),
         ),
       );
     }
@@ -70,8 +80,8 @@ class _LoginPageState extends State<LoginPage> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Đăng nhập với Google thành công!'),
-          backgroundColor: Colors.green,
+          content: Text('Log in with Google successful!'),
+          backgroundColor: Color(0xFF61BD4F),
         ),
       );
     }
@@ -85,297 +95,221 @@ class _LoginPageState extends State<LoginPage> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Đăng nhập với GitHub thành công!'),
-          backgroundColor: Colors.green,
+          content: Text('Log in with GitHub successful!'),
+          backgroundColor: Color(0xFF61BD4F),
         ),
       );
     }
   }
 
+  // --- UI RESPONSIVE ---
   @override
   Widget build(BuildContext context) {
-    final isMobile = _isMobile(context);
+    final isSmallScreen = _isSmallScreen(context);
 
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF9C27B0), Color(0xFFAB47BC), Color(0xFFBA68C8)],
-          ),
-        ),
-        child: Center(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.all(isMobile ? 16 : 32),
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 1000),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: 30,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
+      backgroundColor: isSmallScreen ? Colors.white : const Color(0xFFF9FAFC),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: isSmallScreen ? const EdgeInsets.all(24) : EdgeInsets.zero,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildLogoSection(),
+
+              SizedBox(height: isSmallScreen ? 32 : 40),
+
+              Container(
+                width: isSmallScreen ? double.infinity : 400,
+
+                padding: isSmallScreen
+                    ? EdgeInsets.zero
+                    : const EdgeInsets.all(32),
+
+                decoration: isSmallScreen
+                    ? null
+                    : BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 24,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                child: _buildLoginForm(),
               ),
-              child: isMobile ? _buildMobileLayout() : _buildDesktopLayout(),
-            ),
+
+              const SizedBox(height: 24),
+
+              // 3. Sign Up Link & Footer
+              _buildFooterSection(),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildMobileLayout() {
-    return Padding(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        children: [
-          _buildIllustration(true),
-          const SizedBox(height: 32),
-          _buildLoginForm(true),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDesktopLayout() {
-    return Row(
+  Widget _buildLogoSection() {
+    return Column(
       children: [
-        Expanded(
-          flex: 5,
-          child: Padding(
-            padding: const EdgeInsets.all(60),
-            child: _buildLoginForm(false),
+        Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF0079BF), Color(0xFF0067A3)],
+            ),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0079BF).withOpacity(0.3),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: const Icon(
+            Icons.dashboard_rounded,
+            size: 45,
+            color: Colors.white,
           ),
         ),
-        Expanded(
-          flex: 6,
-          child: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFFE1BEE7), Color(0xFFCE93D8)],
-              ),
-              borderRadius: BorderRadius.only(
-                topRight: Radius.circular(20),
-                bottomRight: Radius.circular(20),
-              ),
-            ),
-            child: _buildIllustration(false),
+        const SizedBox(height: 24),
+        const Text(
+          'TaskFlow',
+          style: TextStyle(
+            fontSize: 32,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF172B4D),
+            letterSpacing: -0.5,
+          ),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Log in to continue',
+          style: TextStyle(
+            fontSize: 16,
+            color: Color(0xFF5E6C84),
+            fontWeight: FontWeight.w400,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildLoginForm(bool isMobile) {
+  Widget _buildLoginForm() {
     return Form(
       key: _formKey,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Đăng Nhập',
-            style: TextStyle(
-              fontSize: 36,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF2D3748),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const Text(
-                "Chưa có tài khoản? ",
-                style: TextStyle(color: Color(0xFF718096)),
-              ),
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const RegisterPage(),
-                    ),
-                  );
-                },
-                child: const Text(
-                  'Đăng ký',
-                  style: TextStyle(
-                    color: Color(0xFF9C27B0),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 32),
-
-          // Email/Username
-          const Text(
-            'Username/Email',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF2D3748),
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 8),
           TextFormField(
             controller: _emailController,
-            decoration: InputDecoration(
-              hintText: 'you@example.com',
-              prefixIcon: const Icon(
-                Icons.person_outline,
-                color: Color(0xFF9C27B0),
-              ),
-              filled: true,
-              fillColor: const Color(0xFFF7FAFC),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: Color(0xFF9C27B0),
-                  width: 2,
-                ),
-              ),
+            style: const TextStyle(fontSize: 15),
+            decoration: _buildInputDecoration(
+              labelText: 'Enter your email or username',
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
-                return 'Vui lòng nhập email hoặc tên đăng nhập';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 20),
-
-          // Password Field
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Mật khẩu',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF2D3748),
-                  fontSize: 14,
-                ),
-              ),
-              GestureDetector(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Quên mật khẩu')),
-                  );
-                },
-                child: const Text(
-                  'Quên mật khẩu?',
-                  style: TextStyle(
-                    color: Color(0xFF9C27B0),
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          TextFormField(
-            controller: _passwordController,
-            obscureText: _obscurePassword,
-            decoration: InputDecoration(
-              hintText: 'Nhập mật khẩu của bạn',
-              prefixIcon: const Icon(
-                Icons.lock_outline,
-                color: Color(0xFF9C27B0),
-              ),
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                  color: const Color(0xFF718096),
-                ),
-                onPressed: () {
-                  setState(() => _obscurePassword = !_obscurePassword);
-                },
-              ),
-              filled: true,
-              fillColor: const Color(0xFFF7FAFC),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: Color(0xFF9C27B0),
-                  width: 2,
-                ),
-              ),
-            ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Vui lòng nhập mật khẩu';
-              }
-              if (value.length < 6) {
-                return 'Mật khẩu phải có ít nhất 6 ký tự';
+                return 'Please enter email or username';
               }
               return null;
             },
           ),
           const SizedBox(height: 16),
 
-          // Remember Me
+          TextFormField(
+            controller: _passwordController,
+            obscureText: _obscurePassword,
+            style: const TextStyle(fontSize: 15),
+            decoration: _buildInputDecoration(
+              labelText: 'Enter your password',
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                  color: const Color(0xFF5E6C84),
+                  size: 20,
+                ),
+                onPressed: () {
+                  setState(() => _obscurePassword = !_obscurePassword);
+                },
+              ),
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter your password';
+              }
+              if (value.length < 6) {
+                return 'Password must be at least 6 characters';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 12),
+
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              SizedBox(
-                width: 20,
-                height: 20,
-                child: Checkbox(
-                  value: _rememberMe,
-                  onChanged: (value) {
-                    setState(() => _rememberMe = value ?? false);
-                  },
-                  activeColor: const Color(0xFF9C27B0),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4),
+              Row(
+                children: [
+                  SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: Checkbox(
+                      value: _rememberMe,
+                      onChanged: (value) {
+                        setState(() => _rememberMe = value ?? false);
+                      },
+                      activeColor: const Color(0xFF0079BF),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Remember me',
+                    style: TextStyle(color: Color(0xFF5E6C84), fontSize: 13),
+                  ),
+                ],
+              ),
+              GestureDetector(
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Forgot password functionality'),
+                    ),
+                  );
+                },
+                child: const Text(
+                  'Forgot password?',
+                  style: TextStyle(
+                    color: Color(0xFF0079BF),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                'Ghi nhớ đăng nhập',
-                style: TextStyle(color: Color(0xFF4A5568), fontSize: 14),
               ),
             ],
           ),
           const SizedBox(height: 24),
 
-          // Login Button
           SizedBox(
-            width: double.infinity,
-            height: 50,
+            height: 48,
             child: ElevatedButton(
               onPressed: _isLoading ? null : _handleLogin,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF9C27B0),
+                backgroundColor: const Color(0xFF0079BF),
                 foregroundColor: Colors.white,
+                disabledBackgroundColor: const Color(
+                  0xFF0079BF,
+                ).withOpacity(0.6),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(4),
                 ),
                 elevation: 0,
               ),
@@ -389,251 +323,173 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     )
                   : const Text(
-                      'ĐĂNG NHẬP',
+                      'Log in',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        letterSpacing: 1,
                       ),
                     ),
             ),
           ),
           const SizedBox(height: 24),
 
-          // Divider
           Row(
-            children: const [
-              Expanded(child: Divider(color: Color(0xFFE2E8F0))),
+            children: [
+              const Expanded(child: Divider(color: Color(0xFFDFE1E6))),
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Text(
-                  'hoặc đăng nhập với',
-                  style: TextStyle(color: Color(0xFF718096), fontSize: 14),
+                  'OR',
+                  style: TextStyle(
+                    color: const Color(0xFF5E6C84).withOpacity(0.8),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
-              Expanded(child: Divider(color: Color(0xFFE2E8F0))),
+              const Expanded(child: Divider(color: Color(0xFFDFE1E6))),
             ],
           ),
           const SizedBox(height: 24),
 
-          // Social Login Buttons
-          Row(
-            children: [
-              Expanded(
-                child: _buildSocialButton(
-                  icon: Icons.g_mobiledata,
-                  label: 'Google',
-                  color: const Color(0xFFDB4437),
-                  onTap: _handleGoogleLogin,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildSocialButton(
-                  icon: Icons.code,
-                  label: 'GitHub',
-                  color: const Color(0xFF333333),
-                  onTap: _handleGithubLogin,
-                ),
-              ),
-            ],
+          _buildSocialButton(
+            label: 'Continue with Google',
+            icon: Icons.g_mobiledata,
+            iconColor: const Color(0xFFDB4437),
+            onTap: _handleGoogleLogin,
+          ),
+          const SizedBox(height: 12),
+          _buildSocialButton(
+            label: 'Continue with GitHub',
+            icon: Icons.code,
+            iconColor: const Color(0xFF24292E),
+            onTap: _handleGithubLogin,
           ),
         ],
+      ),
+    );
+  }
+
+  InputDecoration _buildInputDecoration({
+    required String labelText,
+    Widget? suffixIcon,
+  }) {
+    return InputDecoration(
+      labelText: labelText,
+      labelStyle: const TextStyle(color: Color(0xFF5E6C84), fontSize: 14),
+      filled: true,
+      fillColor: const Color(0xFFFAFBFC),
+      suffixIcon: suffixIcon,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(4),
+        borderSide: const BorderSide(color: Color(0xFFDFE1E6)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(4),
+        borderSide: const BorderSide(color: Color(0xFFDFE1E6)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(4),
+        borderSide: const BorderSide(color: Color(0xFF0079BF), width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(4),
+        borderSide: const BorderSide(color: Color(0xFFEB5A46)),
       ),
     );
   }
 
   Widget _buildSocialButton({
-    required IconData icon,
     required String label,
-    required Color color,
+    required IconData icon,
+    required Color iconColor,
     required VoidCallback onTap,
   }) {
-    return OutlinedButton(
-      onPressed: _isLoading ? null : onTap,
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        side: const BorderSide(color: Color(0xFFE2E8F0)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Color(0xFF2D3748),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildIllustration(bool isMobile) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          if (!isMobile) const SizedBox(height: 60),
-          Container(
-            width: isMobile ? 250 : 400,
-            height: isMobile ? 200 : 350,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Stack(
-              children: [
-                // Desk
-                Positioned(
-                  bottom: 80,
-                  left: 40,
-                  right: 40,
-                  child: Container(
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF9C27B0),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                ),
-
-                // Computer Monitor
-                Positioned(
-                  top: isMobile ? 30 : 60,
-                  left: isMobile ? 60 : 100,
-                  child: Container(
-                    width: isMobile ? 130 : 200,
-                    height: isMobile ? 90 : 140,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: const Color(0xFF9C27B0),
-                        width: 3,
-                      ),
-                    ),
-                    child: Center(
-                      child: Icon(
-                        Icons.laptop_mac,
-                        size: isMobile ? 40 : 60,
-                        color: const Color(0xFF9C27B0),
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Person Sitting
-                Positioned(
-                  bottom: 20,
-                  left: isMobile ? 20 : 40,
-                  child: Container(
-                    width: isMobile ? 60 : 100,
-                    height: isMobile ? 80 : 130,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF7B1FA2),
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(40),
-                        topRight: Radius.circular(40),
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Books
-                Positioned(
-                  bottom: 88,
-                  right: isMobile ? 40 : 80,
-                  child: Row(
-                    children: [
-                      _buildBook(Colors.green, isMobile),
-                      const SizedBox(width: 4),
-                      _buildBook(Colors.blue, isMobile),
-                      const SizedBox(width: 4),
-                      _buildBook(Colors.orange, isMobile),
-                    ],
-                  ),
-                ),
-
-                // Coffee Cup
-                Positioned(
-                  bottom: 90,
-                  left: isMobile ? 160 : 260,
-                  child: Container(
-                    width: isMobile ? 20 : 30,
-                    height: isMobile ? 25 : 35,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE53935),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                ),
-
-                // Notification Icons
-                Positioned(
-                  top: isMobile ? 20 : 30,
-                  right: isMobile ? 20 : 40,
-                  child: Column(
-                    children: [
-                      _buildNotificationIcon(
-                        Colors.red,
-                        Icons.favorite,
-                        isMobile,
-                      ),
-                      SizedBox(height: isMobile ? 6 : 10),
-                      _buildNotificationIcon(
-                        Colors.orange,
-                        Icons.notifications,
-                        isMobile,
-                      ),
-                      SizedBox(height: isMobile ? 6 : 10),
-                      _buildNotificationIcon(
-                        Colors.green,
-                        Icons.check_circle,
-                        isMobile,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (!isMobile) const SizedBox(height: 40),
-          if (!isMobile)
-            const Text(
-              'Chào mừng đến với TaskFlow',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF7B1FA2),
+    return SizedBox(
+      height: 48,
+      width: double.infinity,
+      child: OutlinedButton(
+        onPressed: _isLoading ? null : onTap,
+        style: OutlinedButton.styleFrom(
+          side: const BorderSide(color: Color(0xFFDFE1E6)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+          backgroundColor: Colors.white,
+          foregroundColor: const Color(0xFF172B4D),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: iconColor, size: 24),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF172B4D),
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
               ),
             ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildBook(Color color, bool isMobile) {
-    return Container(
-      width: isMobile ? 12 : 20,
-      height: isMobile ? 40 : 60,
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(2),
-      ),
+  Widget _buildFooterSection() {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              "Don't have an account? ",
+              style: TextStyle(color: Color(0xFF5E6C84), fontSize: 14),
+            ),
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const RegisterPage()),
+                );
+              },
+              child: const Text(
+                'Sign up',
+                style: TextStyle(
+                  color: Color(0xFF0079BF),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 32),
+        Wrap(
+          spacing: 16,
+          runSpacing: 8,
+          alignment: WrapAlignment.center,
+          children: [
+            _buildFooterLink('Privacy Policy'),
+            _buildFooterLink('Terms of Service'),
+            _buildFooterLink('Help'),
+          ],
+        ),
+      ],
     );
   }
 
-  Widget _buildNotificationIcon(Color color, IconData icon, bool isMobile) {
-    return Container(
-      width: isMobile ? 24 : 36,
-      height: isMobile ? 24 : 36,
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-      child: Icon(icon, color: Colors.white, size: isMobile ? 14 : 20),
+  Widget _buildFooterLink(String text) {
+    return GestureDetector(
+      onTap: () {},
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Color(0xFF5E6C84),
+          fontSize: 12,
+          decoration: TextDecoration.underline,
+        ),
+      ),
     );
   }
 }

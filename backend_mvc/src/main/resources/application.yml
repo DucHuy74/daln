@@ -16,9 +16,9 @@ spring:
 
   # Database
   datasource:
-    url: jdbc:mysql://localhost:3306/web_user_stories
+    url: jdbc:mysql://localhost:3306/be
     username: root
-    password: Quanopo123+
+    password: 123456
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       max-lifetime: 1800000

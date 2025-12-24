@@ -32,6 +32,19 @@ class _LoginPageState extends State<LoginPage> {
   final AuthService _authService = AuthService();
 
   @override
+  void initState() {
+    super.initState();
+    _checkExistingLogin();
+  }
+
+  void _checkExistingLogin() async {
+    final token = await _authService.getToken();
+    if (token != null && mounted) {
+      Navigator.pushReplacementNamed(context, '/home');
+    }
+  }
+
+  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'register_screen.dart';
-import 'services/auth_service.dart';
+import 'services/auth/auth_service.dart';
 
 // --- MOCK SERVICE (Dùng để test nếu chưa có file auth_service thật) ---
 /*
@@ -29,7 +29,7 @@ class _LoginPageState extends State<LoginPage> {
   bool _obscurePassword = true;
   bool _isLoading = false;
 
-  final AuthService _authService = AuthService();
+  final AuthService _authService = AuthService.instance;
 
   @override
   void dispose() {
@@ -61,7 +61,7 @@ class _LoginPageState extends State<LoginPage> {
           backgroundColor: Color(0xFF61BD4F),
         ),
       );
-      Navigator.pushReplacementNamed(context, '/home');
+      Navigator.of(context).pushReplacementNamed('/home');
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

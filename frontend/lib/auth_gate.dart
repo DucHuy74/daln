@@ -1,29 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:frontend/services/auth/auth_service.dart';
 import 'login_screen.dart';
 
 class AuthGate extends StatelessWidget {
   final Widget child;
-  const AuthGate({super.key, required this.child});
-
-  Future<bool> _isLoggedIn() async {
-    const storage = FlutterSecureStorage();
-    final token = await storage.read(key: 'access_token');
-    return token != null && token.isNotEmpty;
-  }
+  const AuthGate({required this.child, super.key});
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<bool>(
-      future: _isLoggedIn(),
+      future: AuthService.instance.isLoggedIn(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
 
-        if (snapshot.data!) {
+        if (snapshot.data == true) {
           return child;
         }
 

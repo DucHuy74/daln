@@ -17,16 +17,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'TaskFlow',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(primarySwatch: Colors.blue, fontFamily: 'Inter'),
-
-      home: const LandingPage(),
-
+      title: 'My App',
+      initialRoute: '/',
       routes: {
-        '/login': (_) => const LoginPage(),
-
-        '/home': (_) => const AuthGate(child: HomePage()),
+        '/': (context) => LandingPage(),
+        '/home': (context) => HomePage(),
+        '/login': (context) => LoginPage(),
       },
     );
   }

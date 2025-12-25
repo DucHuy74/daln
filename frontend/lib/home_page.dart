@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/auth_gate.dart';
+import 'package:frontend/services/auth/auth_service.dart';
 import 'login_screen.dart';
 
 class HomePage extends StatelessWidget {
@@ -6,15 +8,7 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        fontFamily: 'Segoe UI',
-        primaryColor: const Color(0xFF0052CC),
-        scaffoldBackgroundColor: Colors.white,
-      ),
-      home: const JiraHomePage(),
-    );
+    return const JiraHomePage();
   }
 }
 
@@ -235,9 +229,13 @@ class _JiraHomePageState extends State<JiraHomePage> {
                       );
 
                       if (confirmed == true) {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (_) => const LoginPage()),
+                        await AuthService.instance.logout();
+
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(
+                            builder: (_) => AuthGate(child: HomePage()),
+                          ),
+                          (route) => false,
                         );
                       }
                     }

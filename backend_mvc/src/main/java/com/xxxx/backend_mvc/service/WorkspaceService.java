@@ -5,6 +5,7 @@ import com.xxxx.backend_mvc.dto.request.WorkspaceCreateRequest;
 import com.xxxx.backend_mvc.dto.request.WorkspaceUpdateRequest;
 import com.xxxx.backend_mvc.dto.response.WorkspaceMemberResponse;
 import com.xxxx.backend_mvc.dto.response.WorkspaceResponse;
+import com.xxxx.backend_mvc.entity.Backlog;
 import com.xxxx.backend_mvc.entity.Profile;
 import com.xxxx.backend_mvc.entity.workspace.*;
 import com.xxxx.backend_mvc.enums.InvitationStatus;
@@ -60,13 +61,22 @@ public class WorkspaceService {
         Profile profile = profileRepository.findByUserId(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
-        Workspace workspace = workspaceRepository.save(
-                Workspace.builder()
-                        .name(request.getName())
-                        .type(request.getType())
-                        .access(request.getAccess())
-                        .build()
-        );
+        Workspace workspace = Workspace.builder()
+                .name(request.getName())
+                .type(request.getType())
+                .access(request.getAccess())
+                .build();
+
+        Backlog backlog = Backlog.builder()
+                .name("Backlog")
+                .workspace(workspace)
+                .build();
+
+        // gán 2 chiều
+        workspace.setBacklog(backlog);
+
+        //save & flush để có ID + timestamp
+        workspace = workspaceRepository.saveAndFlush(workspace);
 
         WorkspaceRole adminRole = workspaceRoleRepository.save(
                 WorkspaceRole.builder()

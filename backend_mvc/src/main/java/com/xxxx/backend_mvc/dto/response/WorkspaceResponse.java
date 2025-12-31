@@ -20,6 +20,7 @@ public class WorkspaceResponse {
     String name;
     WorkspaceType type;
     WorkspaceAccess access;
+    BacklogResponse backlog;
 
     LocalDate createdAt;
     LocalDate updatedAt;

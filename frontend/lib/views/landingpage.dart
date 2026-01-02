@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'login_screen.dart';
+import 'auth/login_screen.dart';
 
 class LandingPage extends StatefulWidget {
   const LandingPage({Key? key}) : super(key: key);
@@ -90,23 +90,23 @@ class _LandingPageState extends State<LandingPage> {
           ),
           ListTile(
             leading: const Icon(Icons.star),
-            title: const Text('Tính năng'),
+            title: const Text('Features'),
             onTap: () {},
           ),
           ListTile(
             leading: const Icon(Icons.attach_money),
-            title: const Text('Giá cả'),
+            title: const Text('Prices'),
             onTap: () {},
           ),
           ListTile(
             leading: const Icon(Icons.chat),
-            title: const Text('Đánh giá'),
+            title: const Text('Evaluates'),
             onTap: () {},
           ),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.login),
-            title: const Text('Đăng nhập'),
+            title: const Text('Log in'),
             onTap: () {
               Navigator.push(
                 context,
@@ -123,7 +123,7 @@ class _LandingPageState extends State<LandingPage> {
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
               child: const Text(
-                'Dùng thử miễn phí',
+                'Try for free',
                 style: TextStyle(color: Colors.white),
               ),
             ),
@@ -181,8 +181,8 @@ class _LandingPageState extends State<LandingPage> {
               ),
               if (!isMobile) ...[
                 const Spacer(),
-                TextButton(onPressed: () {}, child: const Text('Tính năng')),
-                TextButton(onPressed: () {}, child: const Text('Giá cả')),
+                TextButton(onPressed: () {}, child: const Text('Features')),
+                TextButton(onPressed: () {}, child: const Text('Prices')),
                 TextButton(
                   onPressed: () {
                     Navigator.push(
@@ -192,7 +192,7 @@ class _LandingPageState extends State<LandingPage> {
                       ),
                     );
                   },
-                  child: const Text('Đăng nhập'),
+                  child: const Text('Log in'),
                 ),
                 const SizedBox(width: 10),
                 ElevatedButton(
@@ -208,7 +208,7 @@ class _LandingPageState extends State<LandingPage> {
                     ),
                   ),
                   child: const Text(
-                    'Dùng thử miễn phí',
+                    'Try for free',
                     style: TextStyle(color: Colors.white),
                   ),
                 ),
@@ -252,7 +252,7 @@ class _LandingPageState extends State<LandingPage> {
                 const Icon(Icons.bolt, size: 16, color: Color(0xFF1D4ED8)),
                 const SizedBox(width: 8),
                 Text(
-                  'Tăng năng suất lên 40% với AI',
+                  'Increase productivity by 40% with AI',
                   style: TextStyle(
                     color: const Color(0xFF1D4ED8),
                     fontWeight: FontWeight.w600,
@@ -266,7 +266,7 @@ class _LandingPageState extends State<LandingPage> {
           Column(
             children: [
               Text(
-                'Ghi lại, sắp xếp và',
+                'Record, organize and',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: isMobile ? 32 : 56,
@@ -284,7 +284,7 @@ class _LandingPageState extends State<LandingPage> {
                   ],
                 ).createShader(bounds),
                 child: Text(
-                  'hoàn thành mọi việc',
+                  'get things done',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: isMobile ? 32 : 56,
@@ -298,7 +298,7 @@ class _LandingPageState extends State<LandingPage> {
           ),
           SizedBox(height: isMobile ? 16 : 24),
           Text(
-            'Công cụ quản lý công việc mạnh mẽ giúp bạn và đội ngũ làm việc hiệu quả hơn. Miễn phí mãi mãi cho cá nhân.',
+            'Powerful task management tool helps you and your team work more efficiently. Forever free for individuals.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: isMobile ? 16 : 20,
@@ -314,7 +314,7 @@ class _LandingPageState extends State<LandingPage> {
                   width: double.infinity,
                   child: TextField(
                     decoration: InputDecoration(
-                      hintText: 'Email của bạn',
+                      hintText: 'Your email',
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
@@ -344,7 +344,7 @@ class _LandingPageState extends State<LandingPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: const [
                         Text(
-                          'Bắt đầu ngay',
+                          'Start now',
                           style: TextStyle(fontSize: 16, color: Colors.white),
                         ),
                         SizedBox(width: 8),
@@ -367,7 +367,7 @@ class _LandingPageState extends State<LandingPage> {
                   width: 320,
                   child: TextField(
                     decoration: InputDecoration(
-                      hintText: 'Email của bạn',
+                      hintText: 'Your email',
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
@@ -397,7 +397,7 @@ class _LandingPageState extends State<LandingPage> {
                   child: Row(
                     children: const [
                       Text(
-                        'Bắt đầu ngay',
+                        'Start now',
                         style: TextStyle(fontSize: 16, color: Colors.white),
                       ),
                       SizedBox(width: 8),
@@ -409,7 +409,7 @@ class _LandingPageState extends State<LandingPage> {
             ),
           const SizedBox(height: 16),
           Text(
-            'Không cần thẻ tín dụng • Miễn phí mãi mãi',
+            'No credit card required • Forever free',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: isMobile ? 12 : 14,
@@ -440,11 +440,11 @@ class _LandingPageState extends State<LandingPage> {
       ),
       child: Row(
         children: [
-          _buildColumn('Việc cần làm', Colors.blue, 3),
+          _buildColumn('To Do', Colors.blue, 3),
           const SizedBox(width: 16),
-          _buildColumn('Đang làm', Colors.orange, 2),
+          _buildColumn('In Progress', Colors.orange, 2),
           const SizedBox(width: 16),
-          _buildColumn('Hoàn thành', Colors.green, 4),
+          _buildColumn('Completed', Colors.green, 4),
         ],
       ),
     );
@@ -512,7 +512,7 @@ class _LandingPageState extends State<LandingPage> {
               Icon(Icons.calendar_today, size: 10, color: Color(0xFF9CA3AF)),
               SizedBox(width: 4),
               Text(
-                'Hôm nay',
+                'Today',
                 style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF)),
               ),
             ],
@@ -535,7 +535,7 @@ class _LandingPageState extends State<LandingPage> {
       child: Column(
         children: [
           Text(
-            'ĐƯỢC TIN DÙNG BỞI 2 TRIỆU ĐỘI NGŨ',
+            'TRUSTED BY 2 MILLION TEAMS',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: const Color(0xFF6B7280),
@@ -571,23 +571,23 @@ class _LandingPageState extends State<LandingPage> {
     final features = [
       {
         'icon': Icons.dashboard,
-        'title': 'Bảng trực quan',
-        'desc': 'Tổ chức công việc linh hoạt với bảng và thẻ',
+        'title': 'Dashboard',
+        'desc': 'Organize work flexibly with boards and cards',
       },
       {
         'icon': Icons.people,
-        'title': 'Cộng tác nhóm',
-        'desc': 'Làm việc hiệu quả với chia sẻ và theo dõi',
+        'title': 'Team Collaboration',
+        'desc': 'Work effectively with sharing and tracking',
       },
       {
         'icon': Icons.bolt,
-        'title': 'Tự động hóa',
-        'desc': 'Tiết kiệm thời gian không cần code',
+        'title': 'Automation',
+        'desc': 'Save time without needing to code',
       },
       {
         'icon': Icons.calendar_month,
-        'title': 'Lập kế hoạch',
-        'desc': 'Quản lý thời gian một cách hiệu quả',
+        'title': 'Planning',
+        'desc': 'Manage time effectively',
       },
     ];
 
@@ -599,7 +599,7 @@ class _LandingPageState extends State<LandingPage> {
       child: Column(
         children: [
           Text(
-            'Mọi thứ bạn cần để thành công',
+            'Everything you need to succeed',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: isMobile ? 28 : 48,
@@ -609,7 +609,7 @@ class _LandingPageState extends State<LandingPage> {
           ),
           SizedBox(height: isMobile ? 12 : 16),
           Text(
-            'Công cụ mạnh mẽ cho làm việc thông minh',
+            'Powerful tools for smart work',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: isMobile ? 16 : 20,
@@ -727,7 +727,7 @@ class _LandingPageState extends State<LandingPage> {
       child: Column(
         children: [
           Text(
-            'Khách hàng nói gì',
+            'What our customers say',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: isMobile ? 28 : 48,
@@ -740,14 +740,14 @@ class _LandingPageState extends State<LandingPage> {
             Column(
               children: [
                 _buildTestimonialCard(
-                  'TaskFlow đã thay đổi cách chúng tôi làm việc. Mọi thứ rõ ràng và có tổ chức.',
+                  'TaskFlow has changed the way we work. Everything is clear and organized.',
                   'Hoàng Minh Quân',
                   'CEO, Tech Startup',
                   true,
                 ),
                 const SizedBox(height: 16),
                 _buildTestimonialCard(
-                  'Công cụ tuyệt vời. Đội ngũ tăng năng suất 40%.',
+                  'Great tool. Team productivity increased by 40%.',
                   'Hoàng Lê Đức Huy',
                   'Project Manager',
                   true,
@@ -759,7 +759,7 @@ class _LandingPageState extends State<LandingPage> {
               children: [
                 Expanded(
                   child: _buildTestimonialCard(
-                    'TaskFlow đã thay đổi hoàn toàn cách chúng tôi làm việc. Mọi thứ giờ đây đều rõ ràng và có tổ chức.',
+                    'TaskFlow has changed the way we work. Everything is clear and organized.',
                     'Hoàng Minh Quân',
                     'CEO, Tech Startup',
                     false,
@@ -768,7 +768,7 @@ class _LandingPageState extends State<LandingPage> {
                 const SizedBox(width: 32),
                 Expanded(
                   child: _buildTestimonialCard(
-                    'Công cụ tuyệt vời cho quản lý dự án. Đội ngũ của chúng tôi đã tăng năng suất 40%.',
+                    'Great tool. Team productivity increased by 40%.',
                     'Hoàng Lê Đức Huy',
                     'Project Manager',
                     false,
@@ -846,7 +846,7 @@ class _LandingPageState extends State<LandingPage> {
       child: Column(
         children: [
           Text(
-            'Sẵn sàng bắt đầu chưa?',
+            'Ready to get started?',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: isMobile ? 32 : 48,
@@ -856,7 +856,7 @@ class _LandingPageState extends State<LandingPage> {
           ),
           SizedBox(height: isMobile ? 12 : 16),
           Text(
-            'Tham gia hàng triệu người dùng',
+            'Join millions of users',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: isMobile ? 16 : 20,
@@ -883,7 +883,7 @@ class _LandingPageState extends State<LandingPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Dùng thử miễn phí ngay',
+                    'Try it for free now',
                     style: TextStyle(
                       fontSize: isMobile ? 16 : 18,
                       color: Colors.white,
@@ -897,7 +897,7 @@ class _LandingPageState extends State<LandingPage> {
           ),
           SizedBox(height: isMobile ? 12 : 16),
           Text(
-            'Không cần thẻ tín dụng • Hủy bất cứ lúc nào',
+            'No credit card required • Cancel anytime',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: isMobile ? 12 : 14,
@@ -951,11 +951,11 @@ class _LandingPageState extends State<LandingPage> {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'Công cụ quản lý công việc thông minh',
+                  'Smart work management tool',
                   style: TextStyle(color: Color(0xFF9CA3AF)),
                 ),
                 const SizedBox(height: 32),
-                ...['Sản phẩm', 'Công ty', 'Tài nguyên']
+                ...['Products', 'Company', 'Resources']
                     .map(
                       (section) => Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1027,13 +1027,13 @@ class _LandingPageState extends State<LandingPage> {
                       ),
                       const SizedBox(height: 16),
                       const Text(
-                        'Công cụ quản lý công việc thông minh',
+                        'Smart work management tool',
                         style: TextStyle(color: Color(0xFF9CA3AF)),
                       ),
                     ],
                   ),
                 ),
-                ...['Sản phẩm', 'Công ty', 'Tài nguyên'].map(
+                ...['Products', 'Company', 'Resources'].map(
                   (section) => Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

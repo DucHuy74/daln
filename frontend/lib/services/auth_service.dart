@@ -1,113 +1,122 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:html' as html;
+import 'token_storage.dart';
+import 'token_storage_mobile.dart';
+import 'token_storage_web.dart';
 
 class AuthService {
-  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+  AuthService._internal();
+  static final AuthService instance = AuthService._internal();
 
-  final String _clientId = "nckh_app";
-  final String _issuer = "http://localhost:8180/realms/nckh";
-  final String _clientSecret = "B9OECHjjg8xgjpwGPHCeC5RUMDZeWPAY";
-  String? _accessToken;
+  final String _clientId = 'nckh_app';
+  final String _clientSecret = 'i2qSsTm8skZDvT87GsHPAyTWIvgLV6dE';
+  final String _issuer = 'http://localhost:8180/realms/nckh';
+
+  late final TokenStorage _storage = kIsWeb
+      ? WebTokenStorage()
+      : MobileTokenStorage();
+
+  Future<bool> isLoggedIn() async {
+    final token = await getValidAccessToken();
+    return token != null;
+  }
 
   Future<bool> login({
     required String username,
     required String password,
   }) async {
+    await _storage.deleteAll();
+
     final res = await http.post(
-      Uri.parse("$_issuer/protocol/openid-connect/token"),
-      headers: {"Content-Type": "application/x-www-form-urlencoded"},
+      Uri.parse('$_issuer/protocol/openid-connect/token'),
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
       body: {
-        "grant_type": "password",
-        "client_id": _clientId,
-        "client_secret": _clientSecret,
-        "username": username,
-        "password": password,
+        'grant_type': 'password',
+        'client_id': _clientId,
+        'client_secret': _clientSecret,
+        'username': username,
+        'password': password,
+        'scope': 'openid',
       },
     );
 
-    if (res.statusCode == 200) {
-      final data = json.decode(res.body);
+    if (res.statusCode != 200) return false;
 
-      final accessToken = data['access_token'];
-      final refreshToken = data['refresh_token'];
-      final expiresIn = data['expires_in'];
+    final data = json.decode(res.body);
+    await _saveTokens(data);
+    return true;
+  }
 
-      final expiresAt =
-          DateTime.now().millisecondsSinceEpoch + expiresIn * 1000;
+  Future<void> _saveTokens(Map<String, dynamic> data) async {
+    final expiresIn = data['expires_in'] as int;
+    final safeExpiresIn = expiresIn > 30 ? expiresIn - 30 : expiresIn;
 
-      await _secureStorage.write(key: 'access_token', value: accessToken);
-      await _secureStorage.write(key: 'refresh_token', value: refreshToken);
-      await _secureStorage.write(
-        key: 'expires_at',
-        value: expiresAt.toString(),
-      );
+    final expiresAt =
+        DateTime.now().millisecondsSinceEpoch + safeExpiresIn * 1000;
 
-      _accessToken = accessToken;
-      return true;
+    await _storage.write('access_token', data['access_token']);
+    await _storage.write('refresh_token', data['refresh_token']);
+    await _storage.write('id_token', data['id_token']);
+    await _storage.write('expires_at', expiresAt.toString());
+  }
+
+  Future<String?> getValidAccessToken() async {
+    if (!await _isExpired()) {
+      return _storage.read('access_token');
     }
 
-    return false;
+    final refreshed = await _refreshToken();
+    return refreshed ? _storage.read('access_token') : null;
   }
 
-  Future<void> logout() async {
-    await _secureStorage.deleteAll();
-    _accessToken = null;
-  }
-
-  Future<String?> getToken() async {
-    if (await isAccessTokenExpired()) {
-      final ok = await refreshToken();
-      if (!ok) return null;
-    }
-    return await _secureStorage.read(key: 'access_token');
-  }
-
-  Future<bool> refreshToken() async {
-    final refreshToken = await _secureStorage.read(key: 'refresh_token');
-
+  Future<bool> _refreshToken() async {
+    final refreshToken = await _storage.read('refresh_token');
     if (refreshToken == null) return false;
 
     final res = await http.post(
-      Uri.parse("$_issuer/protocol/openid-connect/token"),
-      headers: {"Content-Type": "application/x-www-form-urlencoded"},
+      Uri.parse('$_issuer/protocol/openid-connect/token'),
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
       body: {
-        "grant_type": "refresh_token",
-        "client_id": _clientId,
-        "client_secret": _clientSecret,
-        "refresh_token": refreshToken,
+        'grant_type': 'refresh_token',
+        'client_id': _clientId,
+        'client_secret': _clientSecret,
+        'refresh_token': refreshToken,
       },
     );
 
-    if (res.statusCode == 200) {
-      final data = json.decode(res.body);
+    if (res.statusCode != 200) return false;
 
-      final accessToken = data['access_token'];
-      final newRefreshToken = data['refresh_token'];
-      final expiresIn = data['expires_in'];
-
-      final expiresAt =
-          DateTime.now().millisecondsSinceEpoch + expiresIn * 1000;
-
-      await _secureStorage.write(key: 'access_token', value: accessToken);
-      await _secureStorage.write(key: 'refresh_token', value: newRefreshToken);
-      await _secureStorage.write(
-        key: 'expires_at',
-        value: expiresAt.toString(),
-      );
-
-      _accessToken = accessToken;
-      return true;
-    }
-
-    return false;
+    final data = json.decode(res.body);
+    await _saveTokens(data);
+    return true;
   }
 
-  Future<bool> isAccessTokenExpired() async {
-    final expiresAtStr = await _secureStorage.read(key: 'expires_at');
+  Future<void> logout() async {
+    await _storage.deleteAll();
+
+    if (kIsWeb) {
+      html.window.location.replace('http://localhost:3000/login');
+    }
+  }
+
+  void _logoutWebRedirect() async {
+    final idToken = await _storage.read('id_token');
+    if (idToken == null) return;
+
+    final logoutUrl =
+        '$_issuer/protocol/openid-connect/logout'
+        '?id_token_hint=$idToken'
+        '&post_logout_redirect_uri=http://localhost:3000';
+
+    html.window.location.replace(logoutUrl);
+  }
+
+  Future<bool> _isExpired() async {
+    final expiresAtStr = await _storage.read('expires_at');
     if (expiresAtStr == null) return true;
 
-    final expiresAt = int.parse(expiresAtStr);
-    return DateTime.now().millisecondsSinceEpoch > expiresAt;
+    return DateTime.now().millisecondsSinceEpoch > int.parse(expiresAtStr);
   }
 }

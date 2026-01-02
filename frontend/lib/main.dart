@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/home_page.dart';
-import 'package:frontend/login_screen.dart';
-import 'landingpage.dart';
-import 'auth_gate.dart';
+import '../views/auth/login_screen.dart';
+import '../views/home/home_page.dart';
+import '../views/landingpage.dart';
+import '../auth/auth_gate.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 Future<void> main() async {

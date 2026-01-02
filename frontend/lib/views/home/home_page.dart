@@ -1,24 +1,19 @@
 import 'package:flutter/material.dart';
-import 'login_screen.dart';
+import 'package:frontend/auth/auth_gate.dart';
+import '../../services/auth_service.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        fontFamily: 'Segoe UI',
-        primaryColor: const Color(0xFF0052CC),
-        scaffoldBackgroundColor: Colors.white,
-      ),
-      home: const JiraHomePage(),
+    return WillPopScope(
+      onWillPop: () async => false,
+      child: const JiraHomePage(),
     );
   }
 }
 
-// --- 2. DATA MODELS (Dữ liệu giả) ---
 class Issue {
   final String id;
   final String title;
@@ -235,10 +230,17 @@ class _JiraHomePageState extends State<JiraHomePage> {
                       );
 
                       if (confirmed == true) {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (_) => const LoginPage()),
-                        );
+                        await AuthService.instance.logout();
+                        // Xóa tất cả route và quay về AuthGate
+                        if (mounted) {
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const AuthGate(child: HomePage()),
+                            ),
+                            (route) => false,
+                          );
+                        }
                       }
                     }
                   },

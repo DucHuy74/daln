@@ -34,4 +34,8 @@ class RegisterProcess extends StatelessWidget {
       ],
     );
   }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> main

@@ -53,4 +53,8 @@ class AuthInput extends StatelessWidget {
       validator: validator,
     );
   }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> main

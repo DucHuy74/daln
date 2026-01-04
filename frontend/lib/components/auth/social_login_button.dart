@@ -47,4 +47,8 @@ class SocialLoginButton extends StatelessWidget {
       ),
     );
   }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> main

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/home_page.dart';
-import 'package:frontend/login_screen.dart';
-import 'landingpage.dart';
-import 'auth_gate.dart';
+import '../views/auth/login_screen.dart';
+import '../views/home/home_page.dart';
+import '../views/landingpage.dart';
+import '../auth/auth_gate.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 Future<void> main() async {
@@ -17,12 +17,16 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'My App',
-      initialRoute: '/',
+      title: 'TaskFlow',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(primarySwatch: Colors.blue, fontFamily: 'Inter'),
+
+      home: const LandingPage(),
+
       routes: {
-        '/': (context) => LandingPage(),
-        '/home': (context) => HomePage(),
-        '/login': (context) => LoginPage(),
+        '/login': (_) => const LoginPage(),
+
+        '/home': (_) => const AuthGate(child: HomePage()),
       },
     );
   }

@@ -1,44 +1,42 @@
 server:
-  port: 8080
+  port: ${SERVER_PORT}
   servlet:
-    context-path: /api
+    context-path: ${SERVER_CONTEXT_PATH}
 
 spring:
-
-  # Redis
+  config:
+    import: optional:file:.env
   data:
     redis:
-      host: 127.0.0.1
-      port: 6379
-      username: default
-      password: 123456
-      timeout: 60000
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      username: ${REDIS_USERNAME}
+      password: ${REDIS_PASSWORD}
+      timeout: ${REDIS_TIMEOUT}
 
-  # Database
   datasource:
-    url: jdbc:mysql://localhost:3306/web_user_stories
-    username: root
-    password: Quanopo123+
-    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: ${DB_DRIVER}
     hikari:
-      max-lifetime: 1800000
-      idle-timeout: 600000
-      keepalive-time: 300000
-      validation-timeout: 3000
-      connection-timeout: 20000
-      maximum-pool-size: 10
+      max-lifetime: ${DB_MAX_LIFETIME}
+      idle-timeout: ${DB_IDLE_TIMEOUT}
+      keepalive-time: ${DB_KEEPALIVE_TIME}
+      validation-timeout: ${DB_VALIDATION_TIMEOUT}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT}
+      maximum-pool-size: ${DB_MAX_POOL_SIZE}
 
   jpa:
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: ${JPA_DDL_AUTO}
+    show-sql: ${JPA_SHOW_SQL}
 
-  # Mail
   mail:
-    host: smtp.gmail.com
-    port: 587
-    username: "hoangleduchuy@gmail.com"
-    password: "txredpmukocabgjs"
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
     properties:
       mail:
         smtp:
@@ -46,26 +44,23 @@ spring:
           starttls:
             enable: true
 
-  # Keycloak Resource Server
   security:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:8180/realms/nckh
+          issuer-uri: ${KEYCLOAK_ISSUER_URI}
 
-# JobRunr
 jobrunr:
   background-job-server:
     enabled: true
   dashboard:
     enabled: true
-    port: 8000
+    port: ${JOBRUNR_DASHBOARD_PORT}
 
-# Keycloak Identity Provider
 idp:
-  url: http://localhost:8180
-  client-id: nckh_app
-  client-secret: B9OECHjjg8xgjpwGPHCeC5RUMDZeWPAY
+  url: ${KEYCLOAK_URL}
+  client-id: ${KEYCLOAK_CLIENT_ID}
+  client-secret: ${KEYCLOAK_CLIENT_SECRET}
 
 logging:
   level:

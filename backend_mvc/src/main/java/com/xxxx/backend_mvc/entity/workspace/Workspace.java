@@ -3,11 +3,14 @@ package com.xxxx.backend_mvc.entity.workspace;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.xxxx.backend_mvc.entity.Backlog;
 import com.xxxx.backend_mvc.entity.Sprint;
+import com.xxxx.backend_mvc.entity.UserStory;
 import com.xxxx.backend_mvc.enums.WorkspaceAccess;
 import com.xxxx.backend_mvc.enums.WorkspaceType;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDate;
 import java.util.Set;
@@ -38,7 +41,11 @@ public class Workspace {
     @Column(name = "wsp_access", length = 20)
     WorkspaceAccess access;
 
+    @CreationTimestamp
+    @Column(updatable = false)
     LocalDate createdAt;
+
+    @UpdateTimestamp
     LocalDate updatedAt;
 
     @JsonIgnore
@@ -51,10 +58,14 @@ public class Workspace {
     Set<WorkspaceMember> members;
 
     @JsonIgnore
-    @OneToMany(mappedBy = "workspace", fetch = FetchType.LAZY)
-    Set<Backlog> backlogs;
+    @OneToOne(mappedBy = "workspace", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    Backlog backlog;
+
 
     @JsonIgnore
     @OneToMany(mappedBy = "workspace", fetch = FetchType.LAZY)
     Set<Sprint> sprints;
+
+    @OneToMany(mappedBy = "workspace")
+    Set<UserStory> userStories;
 }

@@ -65,4 +65,8 @@ class AuthHeader extends StatelessWidget {
       ],
     );
   }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> main

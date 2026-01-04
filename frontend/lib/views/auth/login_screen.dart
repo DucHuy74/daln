@@ -316,4 +316,8 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
   // Footer links handled in AuthFooter component
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> main

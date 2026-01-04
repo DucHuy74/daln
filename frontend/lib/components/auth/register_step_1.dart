@@ -38,4 +38,8 @@ class RegisterStep1 extends StatelessWidget {
       ],
     );
   }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> main

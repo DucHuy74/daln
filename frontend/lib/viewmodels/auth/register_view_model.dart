@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
-<<<<<<< HEAD
 import '../../services/auth/register_service.dart';
-=======
-import 'package:frontend/services/auth/register_service.dart';
->>>>>>> main
 
 class RegisterViewModel extends ChangeNotifier {
   // Page & Form Controllers
@@ -155,8 +151,4 @@ class RegisterViewModel extends ChangeNotifier {
       return {'statusCode': 0, 'error': e.toString()};
     }
   }
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> main

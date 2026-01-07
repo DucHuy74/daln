@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-import '../../services/auth_service.dart';
-=======
-import 'package:frontend/services/auth/auth_service.dart';
->>>>>>> main
+import '../../services/auth/auth_service.dart';
 
 class LoginViewModel {
   final AuthService _auth = AuthService.instance;
@@ -20,8 +16,4 @@ class LoginViewModel {
     await Future.delayed(const Duration(seconds: 2));
     return true;
   }
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> main

@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
-<<<<<<< HEAD
-import '../services/auth_service.dart';
-=======
 import '../services/auth/auth_service.dart';
->>>>>>> main
 import '../views/home/home_page.dart';
 import '../views/landingpage.dart';
 
@@ -29,8 +25,4 @@ class AuthGate extends StatelessWidget {
       },
     );
   }
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> main

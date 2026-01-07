@@ -8,16 +8,6 @@ import '../../components/auth/auth_button.dart';
 import '../../components/auth/social_login_button.dart';
 import '../../components/auth/auth_footer.dart';
 
-// --- MOCK SERVICE (Dùng để test nếu chưa có file auth_service thật) ---
-/*
-class AuthService {
-  Future<bool> login({required String username, required String password}) async {
-    await Future.delayed(const Duration(seconds: 2));
-    return username.isNotEmpty && password.length >= 6;
-  }
-}
-*/
-
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
 
@@ -316,8 +306,4 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
   // Footer links handled in AuthFooter component
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> main

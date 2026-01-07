@@ -17,8 +17,4 @@ class RegisterService {
 
     return response;
   }
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> main

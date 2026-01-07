@@ -57,8 +57,4 @@ class AuthFooter extends StatelessWidget {
       ],
     );
   }
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> main

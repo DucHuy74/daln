@@ -8,6 +8,7 @@ import com.xxxx.backend_mvc.entity.workspace.Workspace;
 import com.xxxx.backend_mvc.enums.UserStoryStatus;
 import com.xxxx.backend_mvc.exception.AppException;
 import com.xxxx.backend_mvc.exception.ErrorCode;
+import com.xxxx.backend_mvc.graph.listener.UserStoryCreatedEvent;
 import com.xxxx.backend_mvc.mapper.UserStoryMapper;
 import com.xxxx.backend_mvc.repository.UserStoryRepository;
 import com.xxxx.backend_mvc.repository.WorkspaceRepository;
@@ -15,6 +16,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +31,7 @@ public class UserStoryServiceImpl implements UserStoryService {
     UserStoryRepository userStoryRepository;
     WorkspaceRepository workspaceRepository;
     UserStoryMapper userStoryMapper;
+    ApplicationEventPublisher publisher;
 
     @Override
     public UserStoryResponse create(String workspaceId, UserStoryCreateRequest request) {
@@ -41,9 +44,17 @@ public class UserStoryServiceImpl implements UserStoryService {
         story.setStatus(UserStoryStatus.ToDo); // backlog
         story.setSprint(null);
 
-        return userStoryMapper.toResponse(
-                userStoryRepository.save(story)
+        UserStory saved = userStoryRepository.save(story);
+
+        publisher.publishEvent(
+                new UserStoryCreatedEvent(
+                        saved.getId(),
+                        saved.getStoryText(),
+                        saved.getSprint() != null ? saved.getSprint().getId() : null
+                )
         );
+
+        return userStoryMapper.toResponse(saved);
     }
 
     @Override

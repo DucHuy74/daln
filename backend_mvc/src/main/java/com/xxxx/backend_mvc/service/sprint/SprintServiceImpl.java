@@ -37,6 +37,7 @@ public class SprintServiceImpl implements SprintService{
 
     //Create Sprint
     @Override
+    @Transactional
     public SprintResponse createSprint(String workspaceId, SprintCreateRequest request) {
 
         Workspace workspace = workspaceRepository.findById(workspaceId)
@@ -61,6 +62,7 @@ public class SprintServiceImpl implements SprintService{
 
     //Start Sprint
     @Override
+    @Transactional
     public void startSprint(String sprintId) {
 
         Sprint sprint = sprintRepository.findById(sprintId)
@@ -86,6 +88,7 @@ public class SprintServiceImpl implements SprintService{
 
     //Complete Sprint
     @Override
+    @Transactional
     public void completeSprint(String sprintId) {
 
         Sprint sprint = sprintRepository.findById(sprintId)
@@ -109,6 +112,7 @@ public class SprintServiceImpl implements SprintService{
 
     // Add userstories to sprint
     @Override
+    @Transactional
     public void addUserStoryToSprint(String sprintId, String userStoryId) {
 
         Sprint sprint = sprintRepository.findById(sprintId)
@@ -126,6 +130,7 @@ public class SprintServiceImpl implements SprintService{
 
     //Remove user story khỏi sprint (về backlog)
     @Override
+    @Transactional
     public void removeUserStoryFromSprint(String userStoryId) {
 
         UserStory story = userStoryRepository.findById(userStoryId)

@@ -3,9 +3,10 @@ package com.xxxx.backend_mvc.graph.listener;
 import com.xxxx.backend_mvc.graph.analyze.AnalyzedStory;
 import com.xxxx.backend_mvc.graph.analyze.UserStoryAnalyzer;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.event.EventListener;
 import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -17,7 +18,7 @@ public class UserStoryGraphListener {
     private final UserStoryAnalyzer analyzer;
     private final Neo4jClient neo4jClient;
 
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handle(UserStoryCreatedEvent event) {
 
         AnalyzedStory analyzed = analyzer.analyze(event.storyText());

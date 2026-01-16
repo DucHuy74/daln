@@ -80,22 +80,19 @@ class _InviteViewState extends State<_InviteView> {
     )['description'];
   }
 
-  // Hàm xử lý khi user nhấn submit text field
   void _onFieldSubmitted(String value, InviteViewModel viewModel) {
     if (value.trim().isNotEmpty) {
       viewModel.addMember(value.trim());
-      // Chỉ clear text nếu không có lỗi validate
       if (viewModel.errorMessage == null ||
           !viewModel.errorMessage!.contains("Invalid")) {
         _emailController.clear();
       }
-      _emailFocusNode.requestFocus(); // Giữ focus để nhập tiếp
+      _emailFocusNode.requestFocus();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Dùng context.watch để rebuild khi state thay đổi
     final viewModel = context.watch<InviteViewModel>();
 
     return Scaffold(
@@ -209,7 +206,6 @@ class _InviteViewState extends State<_InviteView> {
                     ),
                   ),
 
-                  // Hiển thị lỗi ngay dưới ô input nếu có
                   if (viewModel.errorMessage != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 8.0),
@@ -289,7 +285,7 @@ class _InviteViewState extends State<_InviteView> {
                   ),
 
                   const SizedBox(height: 48),
-                  
+
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [

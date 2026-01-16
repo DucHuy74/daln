@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import '../../models/home/workspace_model.dart'; // Đảm bảo import đúng đường dẫn model của bạn
+import '../../models/home/workspace_model.dart';
 
 class TaskFlowSidebar extends StatelessWidget {
   final String selectedMenu;
   final Function(String) onMenuSelected;
   final VoidCallback onCreate;
-  final List<WorkspaceModel> workspaces; // Đã đổi từ List<String> sang List<WorkspaceModel>
+  final List<WorkspaceModel> workspaces;
 
   const TaskFlowSidebar({
     Key? key,
@@ -15,20 +15,18 @@ class TaskFlowSidebar extends StatelessWidget {
     this.workspaces = const [],
   }) : super(key: key);
 
-  // --- HELPER 1: Lấy chữ cái đầu của tên ---
   String _getInitials(String name) {
     if (name.trim().isEmpty) return "";
     return name.trim()[0].toUpperCase();
   }
 
-  // --- HELPER 2: Lấy màu cố định theo tên workspace ---
   Color _getAvatarColor(String name) {
     final colors = [
-      const Color(0xFF0052CC), // Blue
-      const Color(0xFFDE350B), // Red
-      const Color(0xFF008DA6), // Teal
-      const Color(0xFF403294), // Purple
-      const Color(0xFFFF991F), // Orange
+      const Color(0xFF0052CC),
+      const Color(0xFFDE350B),
+      const Color(0xFF008DA6),
+      const Color(0xFF403294), 
+      const Color(0xFFFF991F), 
     ];
     return colors[name.hashCode % colors.length];
   }
@@ -44,7 +42,6 @@ class TaskFlowSidebar extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.symmetric(vertical: 12),
         children: [
-          // --- MENU TĨNH ---
           _buildMenuItem('For you', Icons.person_outline, true),
           _buildMenuItem('Recent', Icons.access_time, true),
           _buildMenuItem('Starred', Icons.star_border, true),
@@ -56,7 +53,6 @@ class TaskFlowSidebar extends StatelessWidget {
             child: Divider(height: 1),
           ),
           
-          // --- HEADER SPACES ---
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
@@ -80,7 +76,6 @@ class TaskFlowSidebar extends StatelessWidget {
             ),
           ),
 
-          // --- DANH SÁCH WORKSPACE (DYNAMIC) ---
           if (workspaces.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
@@ -131,22 +126,20 @@ class TaskFlowSidebar extends StatelessWidget {
     );
   }
 
-  // --- WIDGET WORKSPACE ITEM (Avatar màu + Tên) ---
   Widget _buildWorkspaceItem(WorkspaceModel ws) {
-    final isSelected = selectedMenu == ws.name; // Logic chọn dựa trên tên
+    final isSelected = selectedMenu == ws.name;
 
     return Container(
-      margin: const EdgeInsets.only(left: 12), // Thụt lề nhẹ so với mép trái
+      margin: const EdgeInsets.only(left: 12),
       child: ListTile(
         dense: true,
         contentPadding: const EdgeInsets.only(left: 0, right: 12),
-        // Visual: Avatar vuông bo góc
         leading: Container(
           width: 24,
           height: 24,
           decoration: BoxDecoration(
             color: _getAvatarColor(ws.name),
-            borderRadius: BorderRadius.circular(4), // Bo góc vuông nhẹ kiểu Jira
+            borderRadius: BorderRadius.circular(4),
           ),
           alignment: Alignment.center,
           child: Text(
@@ -169,12 +162,11 @@ class TaskFlowSidebar extends StatelessWidget {
         ),
         selected: isSelected,
         selectedTileColor: const Color(0xFFDEEBFF),
-        onTap: () => onMenuSelected(ws.name), // Truyền tên workspace khi click
+        onTap: () => onMenuSelected(ws.name),
       ),
     );
   }
 
-  // --- WIDGET MENU ITEM CŨ (Giữ nguyên) ---
   Widget _buildMenuItem(
     String title,
     IconData? icon,

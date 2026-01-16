@@ -5,6 +5,9 @@ import '../../components/home/taskflow_drawer.dart';
 import '../../components/home/taskflow_sidebar.dart';
 import '../../components/home/taskflow_main_content.dart';
 
+import '../../services/home/workspace_service.dart';
+import '../../models/home/workspace_model.dart';
+
 import 'space_templates.dart';
 
 class MyApp extends StatelessWidget {
@@ -36,14 +39,24 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   String _selectedMenu = 'For you';
 
-  List<String> _workspaces = [];
+  List<WorkspaceModel> _workspaces = [];
+  final WorkspaceService _workspaceService = WorkspaceService();
 
   @override
   void initState() {
     super.initState();
     if (widget.newWorkspaceName != null) {
-      _workspaces.add(widget.newWorkspaceName!);
       _selectedMenu = widget.newWorkspaceName!;
+    }
+    _loadWorkspaces();
+  }
+
+  Future<void> _loadWorkspaces() async {
+    final spaces = await _workspaceService.getWorkspaces();
+    if (mounted) {
+      setState(() {
+        _workspaces = spaces;
+      });
     }
   }
 
@@ -87,6 +100,7 @@ class _HomePageState extends State<HomePage> {
               selectedMenu: _selectedMenu,
               onMenuSelected: _onMenuSelected,
               onCreate: _showCreateDialog,
+              workspaces: _workspaces,
             ),
 
           Expanded(child: TaskFlowMainContent(onCreate: _showCreateDialog)),

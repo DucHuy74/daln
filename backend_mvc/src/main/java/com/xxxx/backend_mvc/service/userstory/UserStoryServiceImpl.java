@@ -34,6 +34,7 @@ public class UserStoryServiceImpl implements UserStoryService {
     ApplicationEventPublisher publisher;
 
     @Override
+    @Transactional
     public UserStoryResponse create(String workspaceId, UserStoryCreateRequest request) {
 
         Workspace workspace = workspaceRepository.findById(workspaceId)

@@ -32,23 +32,32 @@ public class UserStoryGraphListener {
         params.put("sprintId", event.sprintId());
 
         neo4jClient.query("""
-            MERGE (us:UserStory {id:$id})
-            SET us.storyText = $storyText
+    MERGE (us:UserStory {id:$id})
+    SET us.storyText = $storyText
 
-            MERGE (actor:Actor {name:$actor})
-            MERGE (obj:Object {name:$object})
+    MERGE (actor:Actor {name:$actor})
+    MERGE (obj:Object {name:$object})
 
-            MERGE (us)-[:DESCRIBES]->(actor)
-            MERGE (us)-[:DESCRIBES]->(obj)
+    MERGE (us)-[:DESCRIBES]->(actor)
+    MERGE (us)-[:DESCRIBES]->(obj)
 
-            MERGE (actor)-[r:ACTION {name:$action}]->(obj)
+    CREATE (actor)-[:ACTION {
+        name:$action,
+        storyId:$id
+    }]->(obj)
 
-            FOREACH (_ IN CASE WHEN $sprintId IS NULL THEN [] ELSE [1] END |
-                MERGE (s:Sprint {id:$sprintId})
-                MERGE (us)-[:IN_SPRINT]->(s)
-            )
-        """)
+    FOREACH (_ IN CASE WHEN $sprintId IS NULL THEN [1] ELSE [] END |
+        MERGE (b:Backlog {id:"DEFAULT"})
+        MERGE (us)-[:IN_BACKLOG]->(b)
+    )
+
+    FOREACH (_ IN CASE WHEN $sprintId IS NULL THEN [] ELSE [1] END |
+        MERGE (s:Sprint {id:$sprintId})
+        MERGE (us)-[:IN_SPRINT]->(s)
+    )
+""")
                 .bindAll(params)
                 .run();
+
     }
 }

@@ -24,7 +24,12 @@ public class GraphServiceImpl implements GraphService {
     public GraphResponse getSprintGraph(String sprintId) {
 
         var rows = neo4jClient.query("""
-    MATCH (s:Sprint {id:$sprintId})<-[:IN_SPRINT]-(us)
+    MATCH (us:UserStory)
+    WHERE
+        ($sprintId IS NULL AND (us)-[:IN_BACKLOG]->(:Backlog))
+        OR
+        ($sprintId IS NOT NULL AND (us)-[:IN_SPRINT]->(:Sprint {id:$sprintId}))
+
     OPTIONAL MATCH (us)-[r]->(n)
     RETURN us, r, n,
            startNode(r) AS fromNode,
@@ -33,6 +38,7 @@ public class GraphServiceImpl implements GraphService {
                 .bind(sprintId).to("sprintId")
                 .fetch()
                 .all();
+
 
 
 

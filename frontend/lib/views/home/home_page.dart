@@ -4,6 +4,7 @@ import '../../components/home/taskflow_appbar.dart';
 import '../../components/home/taskflow_drawer.dart';
 import '../../components/home/taskflow_sidebar.dart';
 import '../../components/home/taskflow_main_content.dart';
+import '../../components/home/taskflow_backlog.dart';
 
 import '../../services/home/workspace_service.dart';
 import '../../models/home/workspace_model.dart';
@@ -77,6 +78,27 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // --- LOGIC CHUYỂN ĐỔI MÀN HÌNH CHÍNH ---
+  Widget _buildMainContent() {
+    // 1. Tìm xem _selectedMenu có phải là tên của một Workspace không
+    WorkspaceModel? selectedWorkspace;
+    try {
+      selectedWorkspace = _workspaces.firstWhere(
+        (ws) => ws.name == _selectedMenu,
+      );
+    } catch (e) {
+      selectedWorkspace = null;
+    }
+
+    // 2. Nếu tìm thấy Workspace -> Hiển thị Backlog View
+    if (selectedWorkspace != null) {
+      return WorkspaceBacklogView(workspace: selectedWorkspace);
+    }
+
+    // 3. Nếu không (vd: "For you", "Recent") -> Hiển thị màn hình mặc định
+    return TaskFlowMainContent(onCreate: _showCreateDialog);
+  }
+
   @override
   Widget build(BuildContext context) {
     final isMobile = _isMobile(context);
@@ -103,7 +125,9 @@ class _HomePageState extends State<HomePage> {
               workspaces: _workspaces,
             ),
 
-          Expanded(child: TaskFlowMainContent(onCreate: _showCreateDialog)),
+          // --- THAY ĐỔI Ở ĐÂY ---
+          // Thay vì fix cứng TaskFlowMainContent, ta gọi hàm _buildMainContent
+          Expanded(child: _buildMainContent()),
         ],
       ),
     );

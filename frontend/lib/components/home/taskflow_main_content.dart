@@ -63,7 +63,7 @@ class TaskFlowMainContent extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             const Text(
-              'You tried to access a space that doesn\'t exist, or that you don\'t have permission to access. Speak to your Jira admin or space admin to get access.',
+              'You tried to access a space that doesn\'t exist, or that you don\'t have permission to access. Speak to your TaskFlow admin or space admin to get access.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 16,

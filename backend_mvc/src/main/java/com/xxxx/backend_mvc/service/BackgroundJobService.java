@@ -14,11 +14,10 @@ public class BackgroundJobService {
     public void sendInviteEmailAsync(
             String to,
             String workspaceName,
-            String inviterName,
-            String invitationId
+            String inviterName
     ) {
         jobScheduler.enqueue(() ->
-                emailService.sendInviteEmail(to, workspaceName, inviterName, invitationId)
+                emailService.sendInviteEmail(to, workspaceName, inviterName)
         );
     }
 }

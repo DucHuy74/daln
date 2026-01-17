@@ -9,6 +9,7 @@ import com.xxxx.backend_mvc.entity.Backlog;
 import com.xxxx.backend_mvc.entity.Profile;
 import com.xxxx.backend_mvc.entity.workspace.*;
 import com.xxxx.backend_mvc.enums.InvitationStatus;
+import com.xxxx.backend_mvc.enums.NotificationType;
 import com.xxxx.backend_mvc.enums.WorkspaceRoleType;
 import com.xxxx.backend_mvc.exception.AppException;
 import com.xxxx.backend_mvc.exception.ErrorCode;
@@ -35,6 +36,8 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class WorkspaceService {
 
+    static final int INVITE_EXPIRE_DAYS = 3;
+
     WorkspaceRepository workspaceRepository;
     WorkspaceRoleRepository workspaceRoleRepository;
     WorkspaceMemberRepository workspaceMemberRepository;
@@ -42,6 +45,7 @@ public class WorkspaceService {
     ProfileRepository profileRepository;
     WorkspaceMapper workspaceMapper;
     BackgroundJobService backgroundJobService;
+    NotificationService notificationService;
 
     private String getCurrentUserId() {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -49,8 +53,19 @@ public class WorkspaceService {
         if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
+        return jwtAuth.getToken().getSubject();
+    }
 
-        return jwtAuth.getToken().getSubject(); // UUID từ Keycloak (sub)
+    private WorkspaceMember requireAdmin(String workspaceId, String userId) {
+        WorkspaceMember member =
+                workspaceMemberRepository
+                        .findByWorkspace_IdAndProfile_UserId(workspaceId, userId)
+                        .orElseThrow(() -> new AppException(ErrorCode.NO_PERMISSION));
+
+        if (member.getWorkspaceRole().getRoleName() != WorkspaceRoleType.ADMIN) {
+            throw new AppException(ErrorCode.NO_PERMISSION);
+        }
+        return member;
     }
 
     @Transactional
@@ -72,10 +87,8 @@ public class WorkspaceService {
                 .workspace(workspace)
                 .build();
 
-        // gán 2 chiều
         workspace.setBacklog(backlog);
 
-        //save & flush để có ID + timestamp
         workspace = workspaceRepository.saveAndFlush(workspace);
 
         WorkspaceRole adminRole = workspaceRoleRepository.save(
@@ -106,17 +119,11 @@ public class WorkspaceService {
         Workspace workspace = workspaceRepository.findById(workspaceId)
                 .orElseThrow(() -> new AppException(ErrorCode.WORKSPACE_NOT_FOUND));
 
-        WorkspaceMember member =
-                workspaceMemberRepository
-                        .findByWorkspace_IdAndProfile_UserId(workspaceId, userId)
-                        .orElseThrow(() -> new AppException(ErrorCode.NO_PERMISSION));
-
-        if (member.getWorkspaceRole().getRoleName() != WorkspaceRoleType.ADMIN) {
-            throw new AppException(ErrorCode.NO_PERMISSION);
-        }
+        requireAdmin(workspaceId, userId);
 
         workspaceMapper.updateWorkspace(workspace, request);
-        return workspaceMapper.toWorkspaceResponse(workspaceRepository.save(workspace));
+
+        return workspaceMapper.toWorkspaceResponse(workspace);
     }
 
     @Transactional
@@ -126,18 +133,25 @@ public class WorkspaceService {
 
         String userId = getCurrentUserId();
 
-        WorkspaceMember admin =
-                workspaceMemberRepository
-                        .findByWorkspace_IdAndProfile_UserId(workspaceId, userId)
-                        .orElseThrow(() -> new AppException(ErrorCode.NO_PERMISSION));
+        WorkspaceMember admin = requireAdmin(workspaceId, userId);
 
-        if (admin.getWorkspaceRole().getRoleName() != WorkspaceRoleType.ADMIN) {
-            throw new AppException(ErrorCode.NO_PERMISSION);
+        Profile invitee = profileRepository
+                .findByEmail(request.getEmail())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        if (invitee.getUserId().equals(userId)) {
+            throw new AppException(ErrorCode.INVALID_INVITE);
         }
 
-        if (invitationRepository.existsByWorkspaceIdAndEmailAndStatus(
+        if (workspaceMemberRepository
+                .findByWorkspace_IdAndProfile_UserId(workspaceId, invitee.getUserId())
+                .isPresent()) {
+            throw new AppException(ErrorCode.MEMBER_EXISTED);
+        }
+
+        if (invitationRepository.existsByWorkspaceIdAndInviteeUserIdAndStatus(
                 workspaceId,
-                request.getEmail(),
+                invitee.getUserId(),
                 InvitationStatus.PENDING)) {
             throw new AppException(ErrorCode.INVITATION_ALREADY_SENT);
         }
@@ -145,11 +159,22 @@ public class WorkspaceService {
         WorkspaceInvitation invitation = invitationRepository.save(
                 WorkspaceInvitation.builder()
                         .workspaceId(workspaceId)
-                        .email(request.getEmail())
                         .inviterId(userId)
+                        .inviteeUserId(invitee.getUserId())
+                        .email(invitee.getEmail())
                         .status(InvitationStatus.PENDING)
-                        .expiredAt(Instant.now().plus(3, ChronoUnit.DAYS))
+                        .expiredAt(
+                                Instant.now().plus(INVITE_EXPIRE_DAYS, ChronoUnit.DAYS)
+                        )
                         .build()
+        );
+
+        notificationService.notifyUser(
+                invitee.getUserId(),
+                "Workspace Invitation",
+                "You were invited to join workspace " + admin.getWorkspace().getName(),
+                NotificationType.WORKSPACE_INVITE,
+                invitation.getId()
         );
 
         Profile inviter = profileRepository.findByUserId(userId)
@@ -162,8 +187,7 @@ public class WorkspaceService {
                         backgroundJobService.sendInviteEmailAsync(
                                 request.getEmail(),
                                 admin.getWorkspace().getName(),
-                                inviter.getFirstName() + " " + inviter.getLastName(),
-                                invitation.getId()
+                                inviter.getFirstName() + " " + inviter.getLastName()
                         );
                     }
                 }
@@ -179,13 +203,17 @@ public class WorkspaceService {
                 .stream()
                 .map(member -> {
                     Workspace workspace = member.getWorkspace();
-                    WorkspaceResponse res = workspaceMapper.toWorkspaceResponse(workspace);
+                    WorkspaceResponse res =
+                            workspaceMapper.toWorkspaceResponse(workspace);
 
-                    res.setRoles(List.of(member.getWorkspaceRole().getRoleName().name()));
+                    res.setRoles(
+                            List.of(member.getWorkspaceRole().getRoleName().name())
+                    );
 
                     res.setOwnerId(
                             workspace.getMembers().stream()
-                                    .filter(m -> m.getWorkspaceRole().getRoleName() == WorkspaceRoleType.ADMIN)
+                                    .filter(m -> m.getWorkspaceRole().getRoleName()
+                                            == WorkspaceRoleType.ADMIN)
                                     .map(m -> m.getProfile().getUserId())
                                     .findFirst()
                                     .orElse(null)
@@ -200,14 +228,7 @@ public class WorkspaceService {
 
         String userId = getCurrentUserId();
 
-        WorkspaceMember admin =
-                workspaceMemberRepository
-                        .findByWorkspace_IdAndProfile_UserId(workspaceId, userId)
-                        .orElseThrow(() -> new AppException(ErrorCode.NO_PERMISSION));
-
-        if (admin.getWorkspaceRole().getRoleName() != WorkspaceRoleType.ADMIN) {
-            throw new AppException(ErrorCode.NO_PERMISSION);
-        }
+        WorkspaceMember admin = requireAdmin(workspaceId, userId);
 
         workspaceRepository.delete(admin.getWorkspace());
     }

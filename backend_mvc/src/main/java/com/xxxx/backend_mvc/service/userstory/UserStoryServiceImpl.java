@@ -5,6 +5,7 @@ import com.xxxx.backend_mvc.dto.request.UserStoryStatusUpdateRequest;
 import com.xxxx.backend_mvc.dto.response.UserStoryResponse;
 import com.xxxx.backend_mvc.entity.UserStory;
 import com.xxxx.backend_mvc.entity.workspace.Workspace;
+import com.xxxx.backend_mvc.enums.SprintStatus;
 import com.xxxx.backend_mvc.enums.UserStoryStatus;
 import com.xxxx.backend_mvc.exception.AppException;
 import com.xxxx.backend_mvc.exception.ErrorCode;
@@ -42,18 +43,10 @@ public class UserStoryServiceImpl implements UserStoryService {
 
         UserStory story = userStoryMapper.toEntity(request);
         story.setWorkspace(workspace);
-        story.setStatus(UserStoryStatus.ToDo); // backlog
+        story.setStatus(UserStoryStatus.ToDo);
         story.setSprint(null);
 
         UserStory saved = userStoryRepository.save(story);
-
-        publisher.publishEvent(
-                new UserStoryCreatedEvent(
-                        saved.getId(),
-                        saved.getStoryText(),
-                        saved.getSprint() != null ? saved.getSprint().getId() : null
-                )
-        );
 
         return userStoryMapper.toResponse(saved);
     }
@@ -84,6 +77,22 @@ public class UserStoryServiceImpl implements UserStoryService {
 
         UserStory story = userStoryRepository.findById(userStoryId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_STORY_NOT_FOUND));
+
+        if (story.getSprint() == null) {
+            throw new AppException(ErrorCode.USER_STORY_NOT_IN_SPRINT);
+        }
+
+        if (story.getSprint().getStatus() != SprintStatus.InProgress) {
+            throw new AppException(ErrorCode.SPRINT_NOT_ACTIVE);
+        }
+
+        if (!List.of(
+                UserStoryStatus.ToDo,
+                UserStoryStatus.InProgress,
+                UserStoryStatus.Done
+        ).contains(request.getStatus())) {
+            throw new AppException(ErrorCode.INVALID_USER_STORY_STATUS);
+        }
 
         story.setStatus(request.getStatus());
 

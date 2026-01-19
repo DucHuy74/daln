@@ -10,11 +10,13 @@ import com.xxxx.backend_mvc.enums.SprintStatus;
 import com.xxxx.backend_mvc.enums.UserStoryStatus;
 import com.xxxx.backend_mvc.exception.AppException;
 import com.xxxx.backend_mvc.exception.ErrorCode;
+import com.xxxx.backend_mvc.graph.listener.UserStoryCreatedEvent;
 import com.xxxx.backend_mvc.mapper.SprintMapper;
 import com.xxxx.backend_mvc.mapper.UserStoryMapper;
 import com.xxxx.backend_mvc.repository.SprintRepository;
 import com.xxxx.backend_mvc.repository.UserStoryRepository;
 import com.xxxx.backend_mvc.repository.WorkspaceRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +36,8 @@ public class SprintServiceImpl implements SprintService{
     UserStoryRepository userStoryRepository;
     SprintMapper sprintMapper;
     UserStoryMapper userStoryMapper;
+
+    ApplicationEventPublisher publisher;
 
     //Create Sprint
     @Override
@@ -84,6 +88,17 @@ public class SprintServiceImpl implements SprintService{
         }
 
         sprint.setStatus(SprintStatus.InProgress);
+
+        List<UserStory> stories = userStoryRepository.findBySprint_Id(sprintId);
+        for (UserStory story : stories) {
+            publisher.publishEvent(
+                    new UserStoryCreatedEvent(
+                            story.getId(),
+                            story.getStoryText(),
+                            sprintId
+                    )
+            );
+        }
     }
 
     //Complete Sprint
@@ -106,6 +121,7 @@ public class SprintServiceImpl implements SprintService{
         for (UserStory story : stories) {
             if (story.getStatus() != UserStoryStatus.Done) {
                 story.setSprint(null); //về backlog
+                story.setStatus(UserStoryStatus.ToDo);
             }
         }
     }

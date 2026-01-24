@@ -16,6 +16,5 @@ type GraphResponse {
 }
 
 type Query {
-    userStoryGraph(storyId: ID!): GraphResponse
     sprintGraph(sprintId: ID!): GraphResponse
 }

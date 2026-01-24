@@ -4,29 +4,12 @@ import '../../components/home/taskflow_appbar.dart';
 import '../../components/home/taskflow_drawer.dart';
 import '../../components/home/taskflow_sidebar.dart';
 import '../../components/home/taskflow_main_content.dart';
-import '../../components/home/taskflow_backlog.dart';
 
 import '../../services/home/workspace_service.dart';
 import '../../models/home/workspace_model.dart';
 
 import 'space_templates.dart';
-
-class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'TaskFlow',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primaryColor: const Color(0xFF0052CC),
-        fontFamily: 'Segoe UI',
-      ),
-      home: const HomePage(),
-    );
-  }
-}
+import '../backlog/workspace_backlog_view.dart';
 
 class HomePage extends StatefulWidget {
   final String? newWorkspaceName;
@@ -66,6 +49,8 @@ class _HomePageState extends State<HomePage> {
 
   void _onMenuSelected(String menu) {
     setState(() => _selectedMenu = menu);
+    
+    // Nếu đang ở mobile và mở drawer thì đóng lại sau khi chọn
     if (_isMobile(context) && Scaffold.of(context).isDrawerOpen) {
       Navigator.pop(context);
     }
@@ -78,9 +63,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // --- LOGIC CHUYỂN ĐỔI MÀN HÌNH CHÍNH ---
   Widget _buildMainContent() {
-    // 1. Tìm xem _selectedMenu có phải là tên của một Workspace không
     WorkspaceModel? selectedWorkspace;
     try {
       selectedWorkspace = _workspaces.firstWhere(
@@ -90,12 +73,13 @@ class _HomePageState extends State<HomePage> {
       selectedWorkspace = null;
     }
 
-    // 2. Nếu tìm thấy Workspace -> Hiển thị Backlog View
     if (selectedWorkspace != null) {
-      return WorkspaceBacklogView(workspace: selectedWorkspace);
+      return WorkspaceBacklogView(
+        key: ValueKey(selectedWorkspace.id), 
+        workspace: selectedWorkspace,
+      );
     }
 
-    // 3. Nếu không (vd: "For you", "Recent") -> Hiển thị màn hình mặc định
     return TaskFlowMainContent(onCreate: _showCreateDialog);
   }
 
@@ -125,8 +109,6 @@ class _HomePageState extends State<HomePage> {
               workspaces: _workspaces,
             ),
 
-          // --- THAY ĐỔI Ở ĐÂY ---
-          // Thay vì fix cứng TaskFlowMainContent, ta gọi hàm _buildMainContent
           Expanded(child: _buildMainContent()),
         ],
       ),

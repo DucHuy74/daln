@@ -25,8 +25,8 @@ class TaskFlowSidebar extends StatelessWidget {
       const Color(0xFF0052CC),
       const Color(0xFFDE350B),
       const Color(0xFF008DA6),
-      const Color(0xFF403294), 
-      const Color(0xFFFF991F), 
+      const Color(0xFF403294),
+      const Color(0xFFFF991F),
     ];
     return colors[name.hashCode % colors.length];
   }
@@ -47,12 +47,12 @@ class TaskFlowSidebar extends StatelessWidget {
           _buildMenuItem('Starred', Icons.star_border, true),
           _buildMenuItem('Apps', Icons.apps, true),
           _buildMenuItem('Plans', Icons.calendar_today_outlined, true),
-          
+
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Divider(height: 1),
           ),
-          
+
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
@@ -81,20 +81,29 @@ class TaskFlowSidebar extends StatelessWidget {
               padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
               child: Text(
                 "No workspaces found",
-                style: TextStyle(fontSize: 13, color: Colors.grey, fontStyle: FontStyle.italic),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey,
+                  fontStyle: FontStyle.italic,
+                ),
               ),
             )
           else
             ...workspaces.map((ws) => _buildWorkspaceItem(ws)).toList(),
 
           // --- MENU DƯỚI ---
-          _buildMenuItem('More spaces', Icons.chevron_right, true, indent: true),
-          
+          _buildMenuItem(
+            'More spaces',
+            Icons.chevron_right,
+            true,
+            indent: true,
+          ),
+
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Divider(height: 1),
           ),
-          
+
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Text(
@@ -106,28 +115,61 @@ class TaskFlowSidebar extends StatelessWidget {
               ),
             ),
           ),
-          _buildMenuItem('Create a roadmap', Icons.timeline, true, badge: 'TRY', indent: true),
+          _buildMenuItem(
+            'Create a roadmap',
+            Icons.timeline,
+            true,
+            badge: 'TRY',
+            indent: true,
+          ),
           _buildMenuItem('Filters', Icons.filter_list, true, indent: true),
           _buildMenuItem('Dashboards', Icons.dashboard, true, indent: true),
-          _buildMenuItem('Operations', Icons.build_outlined, true, indent: true),
+          _buildMenuItem(
+            'Operations',
+            Icons.build_outlined,
+            true,
+            indent: true,
+          ),
           _buildMenuItem('Customers', Icons.people_outline, true, indent: true),
-          _buildMenuItem('Customer experiences', Icons.headset_mic_outlined, true, indent: true),
-          
+          _buildMenuItem(
+            'Customer experiences',
+            Icons.headset_mic_outlined,
+            true,
+            indent: true,
+          ),
+
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Divider(height: 1),
           ),
-          
-          _buildMenuItem('Assets', Icons.extension_outlined, true, external: true, indent: true),
-          _buildMenuItem('Teams', Icons.groups_outlined, true, external: true, indent: true),
-          _buildMenuItem('Give feedback on the new...', Icons.feedback_outlined, true, indent: true),
+
+          _buildMenuItem(
+            'Assets',
+            Icons.extension_outlined,
+            true,
+            external: true,
+            indent: true,
+          ),
+          _buildMenuItem(
+            'Teams',
+            Icons.groups_outlined,
+            true,
+            external: true,
+            indent: true,
+          ),
+          _buildMenuItem(
+            'Give feedback on the new...',
+            Icons.feedback_outlined,
+            true,
+            indent: true,
+          ),
         ],
       ),
     );
   }
 
   Widget _buildWorkspaceItem(WorkspaceModel ws) {
-    final isSelected = selectedMenu == ws.name;
+    final isSelected = selectedMenu == ws.name; // So sánh tên để highlight
 
     return Container(
       margin: const EdgeInsets.only(left: 12),
@@ -155,13 +197,16 @@ class TaskFlowSidebar extends StatelessWidget {
           ws.name,
           style: TextStyle(
             fontSize: 14,
-            color: isSelected ? const Color(0xFF0052CC) : const Color(0xFF172B4D),
+            color: isSelected
+                ? const Color(0xFF0052CC)
+                : const Color(0xFF172B4D),
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
           ),
           overflow: TextOverflow.ellipsis,
         ),
         selected: isSelected,
         selectedTileColor: const Color(0xFFDEEBFF),
+
         onTap: () => onMenuSelected(ws.name),
       ),
     );

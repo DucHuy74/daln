@@ -61,7 +61,8 @@ class GridSearchConfig:
 
         total_score = results["RG65"]["Pearson_r"] + results["RG65"]["Spearman_rho"] + \
                     results["MC30"]["Pearson_r"] + results["MC30"]["Spearman_rho"] + \
-                    results["SimLex999"]["Pearson_r"] + results["SimLex999"]["Spearman_rho"]
+                    results["Sim353"]["Pearson_r"] + results["Sim353"]["Spearman_rho"]
+                    # results["SimLex999"]["Pearson_r"] + results["SimLex999"]["Spearman_rho"]
         
         return (total_score, beta1, beta2, bias_b, results)
         

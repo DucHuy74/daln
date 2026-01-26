@@ -81,6 +81,7 @@ def print_similarity_results(title, results):
     print(f"   Hệ số Tương quan Pearson (r): {results['RG65']['Pearson_r']:.4f}")
     print(f"   Hệ số Tương quan Spearman (p): {results['RG65']['Spearman_rho']:.4f}")
 
+
 def route_handler(controller):
     async def handler(data: dict = Body(...)):
         return controller(data)

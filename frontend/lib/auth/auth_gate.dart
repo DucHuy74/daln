@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/services/auth/auth_service.dart';
-import 'login_screen.dart';
+import '../services/auth/auth_service.dart';
+import '../views/home/home_page.dart';
+import '../views/landingpage.dart';
 
 class AuthGate extends StatelessWidget {
-  final Widget child;
-  const AuthGate({required this.child, super.key});
+  const AuthGate({super.key, required HomePage child});
 
   @override
   Widget build(BuildContext context) {
@@ -17,11 +17,11 @@ class AuthGate extends StatelessWidget {
           );
         }
 
-        if (snapshot.data == true) {
-          return child;
+        if (snapshot.hasData && snapshot.data == true) {
+          return const HomePage();
         }
 
-        return const LoginPage();
+        return const LandingPage();
       },
     );
   }

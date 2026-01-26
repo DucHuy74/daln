@@ -64,22 +64,28 @@ class AnalyzeUserStories:
 
         # return svo
 
+
+        #Latest: Lọc ra các svo lỗi và lưu lại tương lai thì BA có thể xem xét những ông lỗi này lên bỏ đi hay giữ lại
         # đoạn này cần sửa thành tách ra thành 1 thằng là những us bị lỗi 1 thằng là svo hoàn chỉnh
         svo_errors = [item for item in svo if not (item['subject'] and item['verb'] and item['object'])]
         #normal check: loại bỏ những thằng bị thiếu object verb hoặc subject
+
         svo = [item for item in svo if item['subject'] and item['verb'] and item['object']]
+        #Latest: Phân tích tần xuất object đã có utils
+        #Latest: Mục đích phân tích để đưa ra thằng nào quan trọng
 
         similarity_results = []
 
+
+
+        #Latest: Tính độ tương đồng giữa các verb và object
         # Lặp qua từng cặp SVO
         for i in range(len(svo)):
             for j in range(i + 1, len(svo)):
                 for key in ["verb", "object"]:
                     w1, w2 = svo[i][key].lower(), svo[j][key].lower()
                     if(w1 != w2):
-                        # sim = self.calculate_nonlinear_fusion.calculate(w1, w2, beta1=5.00, beta2=1.30, bias_b=-2.0)
-                        # sim = self.calc_w2v_similarity.calculate(w1, w2)
-                        sim = self.calc_wordnet_similarity.calculate(w1, w2)
+                        sim = self.calculate_nonlinear_fusion.calculate(w1, w2, beta1=5.00, beta2=1.30, bias_b=-2.0)#Latest: sửa tham số theo bộ tham số tối ưu
 
                         similarity_results.append({
                             "w1": w1,

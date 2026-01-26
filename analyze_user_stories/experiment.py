@@ -12,9 +12,9 @@ if __name__ == "__main__":
 
 
     # tìm ra tham số tối ưu cho cách tiếp cận của chúng ta
-    beta1_space = np.arange(0.1, 5.1, 0.1)
-    beta2_space = np.arange(0.1, 5.1, 0.1)
-    bias_b_space = np.arange(-5.0, 5.1, 0.1)
+    beta1_space = np.arange(1.5, 2.1, 0.1)
+    beta2_space = np.arange(4.5, 5.1, 0.1)
+    bias_b_space = np.arange(-3, -1, 0.1)
 
     run_experiment = RunExperiment(word2Vec, calcNonlinearFusion)
     run_experiment.excute(beta1_space, beta2_space, bias_b_space)
@@ -22,7 +22,8 @@ if __name__ == "__main__":
 
     # nếu muốn gọi những cách khác và chỉ đơn thuần đo độ tương đồng thì chỉ cần gọi đến measure
     # class WordSimilarity
-
+    word_similarity = WordSimilarity(word2Vec)
+    print(word_similarity.run(calcWordnetSimilarity))
 
 
 

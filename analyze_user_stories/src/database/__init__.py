@@ -1,6 +1,7 @@
-from sqlalchemy import create_engine, text
+from typing import Generator
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
-from constant import MYSQL_HOST, MYSQL_PASSWORD, MYSQL_USERNAME, MYSQL_PORT, MYSQL_DATABASE
+from constant import DATABASE_URL
 from src.models.base import Base
 
 class DatabaseManager:
@@ -13,18 +14,21 @@ class DatabaseManager:
     def _setup_database(self):
         self.engine = create_engine(
             self.database_url,
-            echo=False,  
-            pool_pre_ping=True,  
-            pool_recycle=3600    
+            echo=True,
+            pool_pre_ping=True,
+            pool_recycle=3600
         )
+
         self.SessionLocal = sessionmaker(
-            bind=self.engine, 
-            expire_on_commit=False 
+            bind=self.engine,
+            autocommit=False,
+            autoflush=False,
+            expire_on_commit=False
         )
 
         Base.metadata.create_all(bind=self.engine)
 
-    def get_session(self) -> Session:  # type: ignore
+    def get_session(self) -> Generator[Session, None, None]:
         session = self.SessionLocal()
         try:
             yield session

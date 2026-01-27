@@ -1,7 +1,7 @@
 from collections import Counter
 from typing import Optional, Tuple
 
-from fastapi.temp_pydantic_v1_params import Body
+from fastapi import Body
 
 
 def find_subject(doc) -> Optional[str]:

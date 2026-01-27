@@ -1,5 +1,6 @@
 package com.xxxx.backend_mvc.service;
 
+import com.xxxx.backend_mvc.dto.response.InvitationResponse;
 import com.xxxx.backend_mvc.entity.Profile;
 import com.xxxx.backend_mvc.entity.workspace.*;
 import com.xxxx.backend_mvc.enums.InvitationStatus;
@@ -8,7 +9,7 @@ import com.xxxx.backend_mvc.enums.WorkspaceRoleType;
 import com.xxxx.backend_mvc.exception.AppException;
 import com.xxxx.backend_mvc.exception.ErrorCode;
 import com.xxxx.backend_mvc.repository.*;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -18,6 +19,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -32,23 +34,11 @@ public class InvitationService {
     ProfileRepository profileRepository;
     NotificationService notificationService;
 
-    private Profile getCurrentProfile() {
-        var authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
-            throw new AppException(ErrorCode.UNAUTHORIZED);
-        }
-
-        String userId = jwtAuth.getToken().getSubject(); // sub từ Keycloak
-
-        return profileRepository.findByUserId(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
-    }
 
     @Transactional
-    public String accept(String token) {
+    public String accept(String invitationId, String userId) {
 
-        WorkspaceInvitation invitation = invitationRepository.findById(token)
+        WorkspaceInvitation invitation = invitationRepository.findById(invitationId)
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_INVITE));
 
         if (invitation.getStatus() != InvitationStatus.PENDING)
@@ -57,24 +47,19 @@ public class InvitationService {
         if (invitation.getExpiredAt().isBefore(Instant.now()))
             throw new AppException(ErrorCode.INVITE_EXPIRED);
 
-        Profile profile = profileRepository
-                .findByEmail(invitation.getEmail())
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
-
-
-        //Email trong invite phải trùng email user login
-        if (!profile.getEmail().equalsIgnoreCase(invitation.getEmail())) {
+        //Check đúng người được mời
+        if (!invitation.getInviteeUserId().equals(userId)) {
             throw new AppException(ErrorCode.NO_PERMISSION);
         }
 
-        Workspace workspace = workspaceRepository
-                .findById(invitation.getWorkspaceId())
+        Profile profile = profileRepository.findByUserId(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        Workspace workspace = workspaceRepository.findById(invitation.getWorkspaceId())
                 .orElseThrow(() -> new AppException(ErrorCode.WORKSPACE_NOT_FOUND));
 
         if (workspaceMemberRepository
-                .findByWorkspace_IdAndProfile_UserId(
-                        workspace.getId(),
-                        profile.getUserId())
+                .findByWorkspace_IdAndProfile_UserId(workspace.getId(), userId)
                 .isPresent()) {
             throw new AppException(ErrorCode.MEMBER_EXISTED);
         }
@@ -110,21 +95,17 @@ public class InvitationService {
         return workspace.getId();
     }
 
-    @Transactional
-    public void deny(String token) {
 
-        WorkspaceInvitation invitation = invitationRepository.findById(token)
+    @Transactional
+    public void deny(String invitationId, String userId) {
+
+        WorkspaceInvitation invitation = invitationRepository.findById(invitationId)
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_INVITE));
 
         if (invitation.getStatus() != InvitationStatus.PENDING)
             throw new AppException(ErrorCode.INVITE_USED);
 
-        Profile profile = profileRepository
-                .findByEmail(invitation.getEmail())
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
-
-
-        if (!profile.getEmail().equalsIgnoreCase(invitation.getEmail())) {
+        if (!invitation.getInviteeUserId().equals(userId)) {
             throw new AppException(ErrorCode.NO_PERMISSION);
         }
 
@@ -134,9 +115,26 @@ public class InvitationService {
         notificationService.notifyUser(
                 invitation.getInviterId(),
                 "Invitation denied",
-                profile.getEmail() + " denied your invitation",
+                "Invitation was denied",
                 NotificationType.INVITATION_DENIED,
                 invitation.getWorkspaceId()
         );
     }
+
+    @Transactional(readOnly = true)
+    public List<InvitationResponse> getMyPendingInvitations(String userId) {
+
+        return invitationRepository
+                .findByInviteeUserIdAndStatus(userId, InvitationStatus.PENDING)
+                .stream()
+                .map(inv -> InvitationResponse.builder()
+                        .id(inv.getId())
+                        .workspaceId(inv.getWorkspaceId())
+                        .inviterId(inv.getInviterId())
+                        .expiredAt(inv.getExpiredAt())
+                        .build()
+                )
+                .toList();
+    }
+
 }

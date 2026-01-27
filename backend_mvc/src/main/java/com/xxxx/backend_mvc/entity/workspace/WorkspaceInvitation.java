@@ -23,6 +23,7 @@ public class WorkspaceInvitation {
     private String workspaceId;
 
     private String inviterId;
+    private String inviteeUserId;
 
     @Enumerated(EnumType.STRING)
     private InvitationStatus status;

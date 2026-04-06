@@ -1,4 +1,4 @@
-package com.xxxx.ddd.infrastructure.event;
+package com.xxxx.dddd.domain.event;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;

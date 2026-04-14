@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  mysql-master-daln:
+    image: mysql:8.0
+    container_name: mysql-master-daln
+    restart: always
+    command: --server-id=11 --log-bin=mysql-bin --binlog-do-db=daln
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3310:3306"
+    volumes:
+      - ./daln-master-data:/var/lib/mysql
+
+  mysql-slave-daln:
+    image: mysql:8.0
+    container_name: mysql-slave-daln
+    restart: always
+    command: --server-id=12 --relay-log=relay-log
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3311:3306"
+    depends_on:
+      - mysql-master-daln
+    volumes:
+      - ./daln-slave-data:/var/lib/mysql

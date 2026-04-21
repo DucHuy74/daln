@@ -1,3 +1,4 @@
+from src.services.priority_service import PriorityService
 from src.models.analyze_story_result import AnalyzeStoryResult
 
 
@@ -8,6 +9,11 @@ class GraphBatchService:
         self.statistics_service = statistics_service
         self.neo4j_service = neo4j_service
         self.db = db
+        
+        self.priority_service = PriorityService(
+            neo4j_service=neo4j_service,
+            db=db
+        )
 
     def rebuild_workspace(self, workspace_id):
 
@@ -33,6 +39,7 @@ class GraphBatchService:
                 "subject": r.asr_subject,
                 "action": r.asr_action,
                 "object": r.asr_object,
+                "story_id": r.asr_user_story_id,
                 "status": "VALID"
             })
 
@@ -74,6 +81,9 @@ class GraphBatchService:
 
             print("[BATCH] Saving rules...")
             self.neo4j_service.save_rules(rules, canonical_map, workspace_id)
+            
+            print("[BATCH] Computing priority...")
+            self.priority_service.compute_priority_for_workspace(workspace_id)
 
             print(f"[BATCH] DONE workspace: {workspace_id}")
 

@@ -20,4 +20,5 @@ class Neo4jConnection:
 
     def execute(self, query, params=None):
         with self.driver.session() as session:
-            return session.run(query, params or {})
+            result = session.run(query, params or {})
+            return [record.data() for record in result]

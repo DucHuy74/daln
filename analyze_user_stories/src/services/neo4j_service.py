@@ -29,7 +29,8 @@ class Neo4jService:
             data.append({
                 "s": s,
                 "a": a,
-                "o": o
+                "o": o,
+                "story_id": svo.get("story_id")
             })
 
         if not data:
@@ -42,18 +43,16 @@ class Neo4jService:
         MERGE (act:Term {name: row.a, workspace_id: $ws})
         MERGE (obj:Term {name: row.o, workspace_id: $ws})
 
-        MERGE (sub)-[r1:PERFORM {
-            story_id: $storyId,
-            source: $source
-        }]->(act)
-        SET r1.sprint_id = $sprintId,
+        MERGE (sub)-[r1:PERFORM {source: $source, story_id: row.story_id}]->(act)
+        SET 
+            r1.story_id = row.story_id,
+            r1.sprint_id = $sprintId,
             r1.backlog_id = $backlogId
 
-        MERGE (act)-[r2:TARGET {
-            story_id: $storyId,
-            source: $source
-        }]->(obj)
-        SET r2.sprint_id = $sprintId,
+        MERGE (act)-[r2:TARGET {source: $source, story_id: row.story_id}]->(obj)
+        SET 
+            r2.story_id = row.story_id,
+            r2.sprint_id = $sprintId,
             r2.backlog_id = $backlogId
         """
 
@@ -165,3 +164,7 @@ class Neo4jService:
         DETACH DELETE n
         """
         self.conn.execute(query, {"ws": workspace_id})
+        
+    def run_query(self, query, params=None):
+        result = self.conn.execute(query, params or {})
+        return list(result) 

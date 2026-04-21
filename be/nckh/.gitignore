@@ -39,6 +39,6 @@ build/
 .env
 
 # Ignore MySQL data and sockets
-**/master-data/
-**/slave-data/
+**/daln-master-data/
+**/daln-slave-data/
 *.sock

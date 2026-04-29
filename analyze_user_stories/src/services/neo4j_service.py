@@ -5,15 +5,15 @@ class Neo4jService:
 
     # --- SVO ---
     def save_svo(
-    self,
-    svo_list,
-    canonical_map,
-    workspace_id,
-    story_id=None,
-    sprint_id=None,
-    backlog_id=None,
-    source="REALTIME"
-):
+        self,
+        svo_list,
+        canonical_map,
+        workspace_id,
+        story_id=None,
+        sprint_id=None,
+        backlog_id=None,
+        source="REALTIME"
+    ):
 
         data = []
 
@@ -25,12 +25,19 @@ class Neo4jService:
 
             if not s or not a or not o:
                 continue
+            
+            # Lấy story_id (ưu tiên từ svo, nếu không có thì lấy từ tham số truyền vào)
+            current_story_id = svo.get("story_id") or story_id
+            
+            # Lấy priority từ svo nếu bên NLP của bạn có trích xuất
+            priority = svo.get("priority") 
 
             data.append({
                 "s": s,
                 "a": a,
                 "o": o,
-                "story_id": svo.get("story_id")
+                "story_id": current_story_id,
+                "priority": priority
             })
 
         if not data:
@@ -39,19 +46,27 @@ class Neo4jService:
         query = """
         UNWIND $data AS row
 
+        // TẠO CÁC NODE TERM
         MERGE (sub:Term {name: row.s, workspace_id: $ws})
         MERGE (act:Term {name: row.a, workspace_id: $ws})
         MERGE (obj:Term {name: row.o, workspace_id: $ws})
 
+        // TẠO NODE USER STORY
+        // Nếu dòng dữ liệu có story_id thì mới tạo node UserStory
+        FOREACH (ignoreMe IN CASE WHEN row.story_id IS NOT NULL THEN [1] ELSE [] END |
+            MERGE (story:UserStory {id: row.story_id})
+            // Hàm coalesce: nếu row.priority bị null, nó sẽ giữ nguyên priority cũ trong DB 
+            SET story.priority = coalesce(row.priority, story.priority) 
+        )
+
+        // TẠO MỐI QUAN HỆ PERFORM & TARGET
         MERGE (sub)-[r1:PERFORM {source: $source, story_id: row.story_id}]->(act)
         SET 
-            r1.story_id = row.story_id,
             r1.sprint_id = $sprintId,
             r1.backlog_id = $backlogId
 
         MERGE (act)-[r2:TARGET {source: $source, story_id: row.story_id}]->(obj)
         SET 
-            r2.story_id = row.story_id,
             r2.sprint_id = $sprintId,
             r2.backlog_id = $backlogId
         """
@@ -59,7 +74,6 @@ class Neo4jService:
         self.conn.execute(query, {
             "data": data,
             "ws": workspace_id,
-            "storyId": story_id if story_id else None,
             "sprintId": sprint_id,
             "backlogId": backlog_id,
             "source": source

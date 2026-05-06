@@ -160,6 +160,7 @@ class _SprintGraphScreenState extends State<SprintGraphScreen>
   Set<String> _selectedNodeKeys = {};
 
   late AnimationController _spinController;
+  final TransformationController _transformationController = TransformationController();
 
   GraphTheme get theme => GraphTheme.of(context);
 
@@ -176,6 +177,7 @@ class _SprintGraphScreenState extends State<SprintGraphScreen>
   @override
   void dispose() {
     _spinController.dispose();
+    _transformationController.dispose();
     super.dispose();
   }
 
@@ -658,6 +660,7 @@ class _SprintGraphScreenState extends State<SprintGraphScreen>
           : Stack(
               children: [
                 InteractiveViewer(
+                  transformationController: _transformationController,
                   panEnabled: !_isLassoMode,
                   scaleEnabled: !_isLassoMode,
                   constrained: false,
@@ -792,7 +795,9 @@ class _SprintGraphScreenState extends State<SprintGraphScreen>
             child: GestureDetector(
               onPanUpdate: (d) {
                 if (!_isZoningMode && !_isLassoMode) {
-                  setState(() => _avoidCollision(key, pos + d.delta));
+                  final scale = _transformationController.value.getMaxScaleOnAxis();
+                  final localDelta = d.delta / scale;
+                  setState(() => _avoidCollision(key, pos + localDelta));
                 }
               },
               onTap: () {

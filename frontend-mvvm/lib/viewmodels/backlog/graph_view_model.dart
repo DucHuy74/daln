@@ -36,13 +36,12 @@ class GraphViewModel extends ChangeNotifier {
 
     List<AnalyzedStory> fetchedStories = [];
 
-    // Map to quickly look up node labels by ID
-    Map<String, String> nodeIdToLabel = {};
+    // Map to quickly look up node data by ID
+    Map<String, Map<String, dynamic>> nodeIdToNode = {};
     for (var node in nodes) {
       String id = node['id']?.toString() ?? '';
-      String label = node['label']?.toString() ?? '';
       if (id.isNotEmpty) {
-        nodeIdToLabel[id] = label.isNotEmpty ? label : id;
+        nodeIdToNode[id] = node as Map<String, dynamic>;
       }
     }
 
@@ -55,8 +54,14 @@ class GraphViewModel extends ChangeNotifier {
 
       if (subjectId.isEmpty || verbId.isEmpty) continue;
 
-      String subjectLabel = nodeIdToLabel[subjectId] ?? subjectId;
-      String verbLabel = nodeIdToLabel[verbId] ?? verbId;
+      String subjectLabel = nodeIdToNode[subjectId]?['label']?.toString() ?? subjectId;
+      String verbLabel = nodeIdToNode[verbId]?['label']?.toString() ?? verbId;
+      
+      double? subjectPriority = (nodeIdToNode[subjectId]?['priority'] as num?)?.toDouble();
+      double? verbPriority = (nodeIdToNode[verbId]?['priority'] as num?)?.toDouble();
+      
+      double? performScore = (performEdge['score'] as num?)?.toDouble();
+      double? performConfidence = (performEdge['confidence'] as num?)?.toDouble();
 
       // Find all TARGET edges starting from this verb (Verb -> Object)
       var targetEdges = edges.where((e) => e['type'] == 'TARGET' && e['from']?.toString() == verbId);
@@ -69,13 +74,21 @@ class GraphViewModel extends ChangeNotifier {
           verb: verbLabel,
           object: "Unknown",
           status: USStatus.todo,
+          subjectPriority: subjectPriority,
+          verbPriority: verbPriority,
+          performScore: performScore,
+          performConfidence: performConfidence,
         ));
       } else {
         for (var targetEdge in targetEdges) {
           String objectId = targetEdge['to']?.toString() ?? '';
           if (objectId.isEmpty) continue;
           
-          String objectLabel = nodeIdToLabel[objectId] ?? objectId;
+          String objectLabel = nodeIdToNode[objectId]?['label']?.toString() ?? objectId;
+          double? objectPriority = (nodeIdToNode[objectId]?['priority'] as num?)?.toDouble();
+          
+          double? targetScore = (targetEdge['score'] as num?)?.toDouble();
+          double? targetConfidence = (targetEdge['confidence'] as num?)?.toDouble();
 
           fetchedStories.add(AnalyzedStory(
             id: "${subjectId}_${verbId}_${objectId}",
@@ -84,6 +97,13 @@ class GraphViewModel extends ChangeNotifier {
             verb: verbLabel,
             object: objectLabel,
             status: USStatus.todo,
+            subjectPriority: subjectPriority,
+            verbPriority: verbPriority,
+            objectPriority: objectPriority,
+            performScore: performScore,
+            performConfidence: performConfidence,
+            targetScore: targetScore,
+            targetConfidence: targetConfidence,
           ));
         }
       }

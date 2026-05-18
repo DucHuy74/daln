@@ -20,11 +20,66 @@ class PriorityService:
         SET n.degree = deg
         """)
 
-        # Betweenness (simple approx: normalize degree)
-        self.neo4j_service.run_query("""
-        MATCH (n:Term)
-        SET n.betweenness = n.degree * 1.0
-        """)
+        # Try GDS betweenness, fallback to Cypher only if GDS truly fails
+        try:
+            # Drop old graph if exists
+            self.neo4j_service.run_query("""
+            CALL gds.graph.drop('termGraph', false)
+            YIELD graphName
+            """)
+        except:
+            pass
+
+        try:
+            self.neo4j_service.run_query("""
+            CALL gds.graph.project(
+                'termGraph',
+                '*',
+                '*'
+            )
+            YIELD graphName, nodeCount, relationshipCount
+            RETURN graphName, nodeCount, relationshipCount
+            """)
+
+            # Compute betweenness with GDS
+            self.neo4j_service.run_query("""
+            CALL gds.betweenness.write(
+                'termGraph',
+                {
+                    writeProperty: 'betweenness'
+                }
+            )
+            YIELD nodePropertiesWritten
+            RETURN nodePropertiesWritten
+            """)
+
+            # Normalize betweenness into [0,1] so it can be meaningfully combined with degree
+            self.neo4j_service.run_query("""
+            MATCH (n:Term)
+            WITH max(n.betweenness) AS maxBet
+            MATCH (m:Term)
+            SET m.betweenness = CASE
+                WHEN maxBet > 0 THEN m.betweenness / maxBet
+                ELSE 0.0
+            END
+            """)
+
+            # Clean up after write
+            self.neo4j_service.run_query("""
+            CALL gds.graph.drop('termGraph')
+            YIELD graphName
+            RETURN graphName
+            """)
+
+            print("[PRIORITY] GDS betweenness computed")
+
+        except Exception as e:
+            print(f"[PRIORITY] GDS not available, using Cypher approximation: {e}")
+            # Fallback: use degree as betweenness approximation
+            self.neo4j_service.run_query("""
+            MATCH (n:Term)
+            SET n.betweenness = n.degree * 1.0
+            """)
 
         print("[PRIORITY] Centrality done")
 

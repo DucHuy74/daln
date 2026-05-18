@@ -97,9 +97,8 @@ public class SprintAppServiceImpl implements SprintAppService {
 
         for (UserStory story : stories) {
             publisher.publishEvent(
-                    new UserStoryCreatedEvent(
+                    new UserStoryMovedEvent(
                             story.getId(),
-                            story.getStoryText(),
                             sprintId,
                             null,
                             sprint.getWorkspace().getId()

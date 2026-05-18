@@ -63,10 +63,10 @@ spring:
           issuer-uri: ${KEYCLOAK_ISSUER_URI}
 
   neo4j:
-    uri: neo4j+s://d64a682c.databases.neo4j.io
+    uri: neo4j://127.0.0.1:7687
     authentication:
       username: neo4j
-      password: HdwlHzHdYhAqaJYfEPhhIPWWNtoilzXPfI4gWvYQNME
+      password: 12345678
     data:
       neo4j:
         database: neo4j

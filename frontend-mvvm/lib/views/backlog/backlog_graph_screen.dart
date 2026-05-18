@@ -17,7 +17,7 @@ import '../../services/home/workspace_service.dart';
 // =============================================================================
 // CLASS WRAPPER: BỌC PROVIDER
 // =============================================================================
-class BacklogGraphScreen extends StatelessWidget {
+class BacklogGraphScreen extends StatefulWidget {
   final String workspaceId;
   final String backlogId;
   final String backlogName;
@@ -30,13 +30,32 @@ class BacklogGraphScreen extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<BacklogGraphScreen> createState() => _BacklogGraphScreenState();
+}
+
+class _BacklogGraphScreenState extends State<BacklogGraphScreen> {
+  late final GraphViewModel _viewModel;
+
+  @override
+  void initState() {
+    super.initState();
+    _viewModel = GraphViewModel();
+  }
+
+  @override
+  void dispose() {
+    _viewModel.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => GraphViewModel(),
+    return ChangeNotifierProvider.value(
+      value: _viewModel,
       child: _BacklogGraphScreenContent(
-        workspaceId: workspaceId,
-        backlogId: backlogId,
-        backlogName: backlogName,
+        workspaceId: widget.workspaceId,
+        backlogId: widget.backlogId,
+        backlogName: widget.backlogName,
       ),
     );
   }
@@ -78,6 +97,8 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
   Set<String> _selectedNodeKeys = {};
 
   late AnimationController _spinController;
+  final TransformationController _transformationController =
+      TransformationController();
 
   GraphTheme get theme => GraphTheme.of(context);
 
@@ -97,7 +118,17 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
   @override
   void dispose() {
     _spinController.dispose();
+    _transformationController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant _BacklogGraphScreenContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.workspaceId != widget.workspaceId ||
+        oldWidget.backlogId != widget.backlogId) {
+      _loadData();
+    }
   }
 
   Future<void> _loadData({String source = 'REALTIME'}) async {
@@ -298,6 +329,7 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
           : Stack(
               children: [
                 InteractiveViewer(
+                  transformationController: _transformationController,
                   panEnabled: !_isLassoMode,
                   scaleEnabled: !_isLassoMode,
                   constrained: false,
@@ -462,7 +494,10 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
             child: GestureDetector(
               onPanUpdate: (d) {
                 if (!_isZoningMode && !_isLassoMode) {
-                  setState(() => _avoidCollision(key, pos + d.delta));
+                  final scale = _transformationController.value
+                      .getMaxScaleOnAxis();
+                  final localDelta = d.delta / scale;
+                  setState(() => _avoidCollision(key, pos + localDelta));
                 }
               },
               onTap: () {
@@ -684,7 +719,7 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
         side: BorderSide(color: theme.panelBorder),
       ),
       builder: (c) => Container(
-        height: 180,
+        height: 250,
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -702,12 +737,42 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
               children: [
                 _statusChip(story.status),
                 const SizedBox(width: 12),
-                Text(
-                  '${story.subject} → ${story.verb} → ${story.object}',
-                  style: TextStyle(color: theme.textSecondary, fontSize: 13),
+                Expanded(
+                  child: Text(
+                    '${story.subject} → ${story.verb} → ${story.object}',
+                    style: TextStyle(color: theme.textSecondary, fontSize: 13),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
+            const SizedBox(height: 12),
+            if (story.objectPriority != null)
+              Text(
+                'Priority: ${(story.objectPriority! * 100).toStringAsFixed(1)}%',
+                style: TextStyle(
+                  color: theme.subjectBorder,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            if (story.performScore != null || story.targetScore != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4.0),
+                child: Text(
+                  'Score: ${story.performScore?.toStringAsFixed(2) ?? '-'} (Perform) / ${story.targetScore?.toStringAsFixed(2) ?? '-'} (Target)',
+                  style: TextStyle(color: theme.verbBorder, fontSize: 13),
+                ),
+              ),
+            if (story.performConfidence != null ||
+                story.targetConfidence != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4.0),
+                child: Text(
+                  'Confidence: ${(story.performConfidence != null ? (story.performConfidence! * 100).toStringAsFixed(1) : '-')} % / ${(story.targetConfidence != null ? (story.targetConfidence! * 100).toStringAsFixed(1) : '-')} %',
+                  style: TextStyle(color: theme.textSecondary, fontSize: 13),
+                ),
+              ),
             const SizedBox(height: 12),
             Text(
               'ID: ${story.id}',

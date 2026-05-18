@@ -31,6 +31,7 @@ class GraphService {
                   id
                   label
                   type
+                  priority
               }
               edges {
                   from
@@ -65,13 +66,14 @@ class GraphService {
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final body = jsonDecode(response.body);
+        print('DEBUG GraphQL Response: $body');
         if (body['errors'] != null) {
           print('GraphQL Errors: ${body['errors']}');
         }
         if (body['data'] != null && body['data']['workspaceGraph'] != null) {
           return body['data']['workspaceGraph'];
         }
-        return body;
+        return null;
       } else {
         print('Lỗi gọi Graph API: Status ${response.statusCode} - ${response.body}');
         return null;

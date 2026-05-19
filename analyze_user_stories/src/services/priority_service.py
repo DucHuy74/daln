@@ -8,21 +8,29 @@ class PriorityService:
         self.neo4j_service = neo4j_service
         self.db = db
 
-    # CENTRALITY
-    def compute_centrality(self):
-        print("[PRIORITY] Computing centrality...")
+    def compute_centrality(self, workspace_id):
 
-        # Degree
+        print(f"[PRIORITY] Computing centrality workspace={workspace_id}...")
+
+        # =========================
+        # DEGREE
+        # =========================
         self.neo4j_service.run_query("""
-        MATCH (n:Term)
-        OPTIONAL MATCH (n)--()
-        WITH n, count(*) as deg
-        SET n.degree = deg
-        """)
+        MATCH (n:Term {workspace_id: $ws})
 
-        # Try GDS betweenness, fallback to Cypher only if GDS truly fails
+        OPTIONAL MATCH (n)--(m:Term {workspace_id: $ws})
+
+        WITH n, count(m) as deg
+
+        SET n.degree = deg
+        """, {
+            "ws": workspace_id
+        })
+
+        # =========================
+        # DROP OLD GRAPH
+        # =========================
         try:
-            # Drop old graph if exists
             self.neo4j_service.run_query("""
             CALL gds.graph.drop('termGraph', false)
             YIELD graphName
@@ -31,17 +39,42 @@ class PriorityService:
             pass
 
         try:
-            self.neo4j_service.run_query("""
-            CALL gds.graph.project(
+
+            # =========================
+            # PROJECT GRAPH
+            # =========================
+            self.neo4j_service.run_query(f"""
+            CALL gds.graph.project.cypher(
+
                 'termGraph',
-                '*',
-                '*'
+
+                '
+                MATCH (n:Term)
+
+                WHERE n.workspace_id = "{workspace_id}"
+
+                RETURN id(n) AS id
+                ',
+
+                '
+                MATCH (n:Term)-[r]->(m:Term)
+
+                WHERE n.workspace_id = "{workspace_id}"
+                AND m.workspace_id = "{workspace_id}"
+
+                RETURN
+                    id(n) AS source,
+                    id(m) AS target
+                '
             )
             YIELD graphName, nodeCount, relationshipCount
+
             RETURN graphName, nodeCount, relationshipCount
             """)
 
-            # Compute betweenness with GDS
+            # =========================
+            # BETWEENNESS
+            # =========================
             self.neo4j_service.run_query("""
             CALL gds.betweenness.write(
                 'termGraph',
@@ -50,36 +83,54 @@ class PriorityService:
                 }
             )
             YIELD nodePropertiesWritten
+
             RETURN nodePropertiesWritten
             """)
 
-            # Normalize betweenness into [0,1] so it can be meaningfully combined with degree
+            # =========================
+            # NORMALIZE
+            # =========================
             self.neo4j_service.run_query("""
-            MATCH (n:Term)
+            MATCH (n:Term {workspace_id: $ws})
+
             WITH max(n.betweenness) AS maxBet
-            MATCH (m:Term)
+
+            MATCH (m:Term {workspace_id: $ws})
+
             SET m.betweenness = CASE
-                WHEN maxBet > 0 THEN m.betweenness / maxBet
+                WHEN maxBet > 0
+                THEN m.betweenness / maxBet
                 ELSE 0.0
             END
-            """)
+            """, {
+                "ws": workspace_id
+            })
 
-            # Clean up after write
+            # =========================
+            # DROP GRAPH
+            # =========================
             self.neo4j_service.run_query("""
             CALL gds.graph.drop('termGraph')
             YIELD graphName
+
             RETURN graphName
             """)
 
             print("[PRIORITY] GDS betweenness computed")
 
         except Exception as e:
-            print(f"[PRIORITY] GDS not available, using Cypher approximation: {e}")
-            # Fallback: use degree as betweenness approximation
+
+            print(f"[PRIORITY] GDS failed: {e}")
+
+            # fallback
             self.neo4j_service.run_query("""
-            MATCH (n:Term)
-            SET n.betweenness = n.degree * 1.0
-            """)
+            MATCH (n:Term {workspace_id: $ws})
+
+            SET n.betweenness =
+                coalesce(n.degree, 0) * 1.0
+            """, {
+                "ws": workspace_id
+            })
 
         print("[PRIORITY] Centrality done")
 
@@ -150,7 +201,7 @@ class PriorityService:
         print(f"[PRIORITY] Start workspace={workspace_id}")
 
         # 1. centrality
-        self.compute_centrality()
+        self.compute_centrality(workspace_id)
 
         # 2. load story objects
         stories = self.load_story_objects(workspace_id)

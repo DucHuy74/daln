@@ -63,7 +63,7 @@ spring:
           issuer-uri: ${KEYCLOAK_ISSUER_URI}
 
   neo4j:
-    uri: neo4j://127.0.0.1:7687
+    uri: bolt://127.0.0.1:7687
     authentication:
       username: neo4j
       password: 12345678

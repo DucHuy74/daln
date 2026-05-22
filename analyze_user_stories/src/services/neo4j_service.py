@@ -1,3 +1,6 @@
+import json
+
+
 class Neo4jService:
 
     def __init__(self, conn):
@@ -85,16 +88,16 @@ class Neo4jService:
         data = []
 
         for item in auto_merge:
-            c1 = canonical_map.get(item["w1"], item["w1"])
-            c2 = canonical_map.get(item["w2"], item["w2"])
-
-            if c1 == c2:
+            w1 = item["w1"]
+            w2 = item["w2"]
+            if not w1 or not w2 or w1 == w2:
                 continue
 
+            # Giữ tên gốc w1/w2: sau canonical_map hai verb có thể cùng root → bỏ qua cạnh nếu dùng canonical
             data.append({
-                "c1": c1,
-                "c2": c2,
-                "sim": item["similarity"]
+                "c1": w1,
+                "c2": w2,
+                "sim": item["similarity"],
             })
 
         if not data:
@@ -178,6 +181,91 @@ class Neo4jService:
         DETACH DELETE n
         """
         self.conn.execute(query, {"ws": workspace_id})
+
+    def load_similarity_map(self, workspace_id):
+        query = """
+        MATCH (a:Term {workspace_id: $ws})
+        OPTIONAL MATCH (a)-[r:SIMILAR]->(b:Term {workspace_id: $ws})
+        WHERE b IS NOT NULL
+        RETURN a.name AS left_term, b.name AS right_term, coalesce(r.score, 0.0) AS score
+        """
+        return self.conn.execute(query, {"ws": workspace_id})
+
+    def load_rule_map(self, workspace_id):
+        query = """
+        MATCH (a:Term {workspace_id: $ws})-[r:ASSOCIATED]->(b:Term {workspace_id: $ws})
+        RETURN a.name AS left_term,
+               b.name AS right_term,
+               coalesce(r.confidence, 0.0) AS confidence,
+               coalesce(r.lift, 0.0) AS lift
+        """
+        return self.conn.execute(query, {"ws": workspace_id})
+
+    def load_story_priorities(self, workspace_id):
+        query = """
+        MATCH (:Term {workspace_id: $ws})-[r:PERFORM]->(:Term {workspace_id: $ws})
+        MATCH (s:UserStory {id: r.story_id})
+        RETURN DISTINCT s.id AS story_id, coalesce(s.priority, 0.0) AS priority
+        """
+        return self.conn.execute(query, {"ws": workspace_id})
+
+    def save_redundancy_pairs(self, workspace_id, pairs):
+        if not pairs:
+            return
+
+        query = """
+        UNWIND $pairs AS row
+        MERGE (a:UserStory {id: row.left_story_id})
+        MERGE (b:UserStory {id: row.right_story_id})
+        MERGE (a)-[r:REDUNDANT_WITH {workspace_id: $ws}]->(b)
+        SET r.score = row.redundancy_prob,
+            r.group_id = row.group_id,
+            r.model = row.model_name
+        """
+        self.conn.execute(query, {"ws": workspace_id, "pairs": pairs})
+
+    def save_story_priority_v2(self, workspace_id, story_outputs):
+        if not story_outputs:
+            return
+
+        query = """
+        UNWIND $rows AS row
+        MERGE (s:UserStory {id: row.story_id})
+        SET s.priority_refined = row.priority_refined,
+            s.redundancy_prob = row.redundancy_prob,
+            s.priority_final = row.priority_final,
+            s.redundancy_group_id = row.redundancy_group_id,
+            s.workspace_id = coalesce(s.workspace_id, $ws)
+        """
+        self.conn.execute(query, {"ws": workspace_id, "rows": story_outputs})
+
+    def save_classification_metrics(self, workspace_id, model_name, metrics):
+        query = """
+        MERGE (m:ClassificationMetrics {workspace_id: $ws})
+        SET m.model_name = $model_name,
+            m.metrics_json = $metrics_json
+        """
+        self.conn.execute(
+            query,
+            {
+                "ws": workspace_id,
+                "model_name": model_name,
+                "metrics_json": json.dumps(metrics, ensure_ascii=True, separators=(",", ":")),
+            },
+        )
+
+    def get_top_redundant_pairs(self, workspace_id, top_k=20):
+        query = """
+        MATCH (a:UserStory)-[r:REDUNDANT_WITH {workspace_id: $ws}]->(b:UserStory)
+        RETURN a.id AS left_story_id,
+               b.id AS right_story_id,
+               coalesce(r.score, 0.0) AS redundancy_prob,
+               coalesce(r.group_id, "group_0") AS group_id,
+               coalesce(r.model, "unknown") AS model_name
+        ORDER BY redundancy_prob DESC
+        LIMIT $top_k
+        """
+        return self.conn.execute(query, {"ws": workspace_id, "top_k": top_k})
         
     def run_query(self, query, params=None):
         result = self.conn.execute(query, params or {})

@@ -1,7 +1,14 @@
 from collections import Counter
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 from fastapi import Body
+
+
+def sorted_term_pair(a: Any, b: Any) -> Tuple[str, str]:
+    """Key (term1, term2) đã sort; tránh lỗi khi Neo4j/parser trả về None."""
+    sa = str(a or "").strip().lower()
+    sb = str(b or "").strip().lower()
+    return tuple(sorted((sa, sb)))
 
 
 def find_subject(doc) -> Optional[str]:
@@ -17,6 +24,60 @@ def find_subject(doc) -> Optional[str]:
     return None
 
 
+_WANT_LIKE_LEMMAS = frozenset({
+    "want", "need", "wish", "hope", "prefer", "like", "love", "expect",
+    "try", "attempt", "plan", "request", "require", "order", "choose",
+})
+_SKIP_VERB_LEMMAS = frozenset({"be", "get", "become", "able"})
+
+
+def _deepest_content_verb(root_verb):
+    """Lấy động từ nội dung sâu nhất trong subtree (want to be able to manage -> manage)."""
+    candidates = [
+        t for t in root_verb.subtree
+        if t.pos_ == "VERB" and t.lemma_ not in _SKIP_VERB_LEMMAS
+    ]
+    if not candidates:
+        return root_verb
+    return max(candidates, key=lambda t: t.i)
+
+
+def _find_verb_after_to(main_verb):
+    """Fallback: quét token sau 'want/need/...' + 'to' để lấy VERB (spaCy đôi khi không gắn xcomp)."""
+    tokens = list(main_verb.doc)
+    start = main_verb.i
+    for i in range(start, len(tokens)):
+        if tokens[i].lemma_ not in _WANT_LIKE_LEMMAS:
+            continue
+        for j in range(i + 1, min(i + 8, len(tokens))):
+            if tokens[j].lemma_ != "to":
+                continue
+            for k in range(j + 1, min(j + 6, len(tokens))):
+                if tokens[k].pos_ == "VERB" and tokens[k].lemma_ not in _SKIP_VERB_LEMMAS:
+                    return tokens[k]
+    return None
+
+
+def _resolve_action_verb(main_verb):
+    """User story: 'I want to <verb> ...' -> action là <verb>, không phải want."""
+    if main_verb.lemma_ not in _WANT_LIKE_LEMMAS:
+        return main_verb
+
+    for child in main_verb.children:
+        if child.dep_ == "xcomp" and child.pos_ == "VERB":
+            return _deepest_content_verb(child)
+
+    for child in main_verb.children:
+        if child.dep_ in ("ccomp", "advcl", "relcl") and child.pos_ == "VERB":
+            return _deepest_content_verb(child)
+
+    after_to = _find_verb_after_to(main_verb)
+    if after_to:
+        return after_to
+
+    return main_verb
+
+
 def find_verb_object(doc) -> Tuple[Optional[str], Optional[str]]:
     verb = None
     obj = None
@@ -29,16 +90,8 @@ def find_verb_object(doc) -> Tuple[Optional[str], Optional[str]]:
 
     if not main_verb:
         return None, None
-    
-    true_verb = None #động từ thực sự mà muốn tìm
 
-    for child in main_verb.children:
-        # xcomp: bổ ngữ cho động từ chính(mệnh đề tân ngữ mở)
-        if child.dep_ == "xcomp" and child.pos_ == "VERB":
-            true_verb = child
-            break
-
-    verb_token = true_verb if true_verb else main_verb
+    verb_token = _resolve_action_verb(main_verb)
     verb = verb_token.lemma_
 
 

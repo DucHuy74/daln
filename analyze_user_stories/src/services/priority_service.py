@@ -147,18 +147,18 @@ class PriorityService:
             collect(DISTINCT obj.name) as objects
         """, {"ws": workspace_id})
 
-    # LOAD CACHE
-    def load_all_object_scores(self):
+    # LOAD CACHE (scoped theo workspace — tránh trộn score giữa các workspace cùng tên term)
+    def load_all_object_scores(self, workspace_id):
         result = self.neo4j_service.run_query("""
-        MATCH (o:Term)
-        RETURN o.name as name, 
-               coalesce(o.degree,0) as degree, 
-               coalesce(o.betweenness,0) as betweenness
-        """)
+        MATCH (o:Term {workspace_id: $ws})
+        RETURN o.name AS name,
+               coalesce(o.degree, 0) AS degree,
+               coalesce(o.betweenness, 0) AS betweenness
+        """, {"ws": workspace_id})
 
         cache = {}
         for r in result:
-            cache[r["name"]] = (r["degree"], r["betweenness"])
+            cache[(workspace_id, r["name"])] = (r["degree"], r["betweenness"])
 
         return cache
 
@@ -210,8 +210,8 @@ class PriorityService:
             print("[PRIORITY] No stories found")
             return
 
-        # 3. load cache
-        object_cache = self.load_all_object_scores()
+        # 3. load cache (chỉ Term thuộc workspace hiện tại)
+        object_cache = self.load_all_object_scores(workspace_id)
 
         struct_scores = []
 
@@ -227,7 +227,7 @@ class PriorityService:
             between_sum = 0
 
             for obj in objects:
-                degree, between = object_cache.get(obj, (0, 0))
+                degree, between = object_cache.get((workspace_id, obj), (0, 0))
                 degree_sum += degree
                 between_sum += between
 

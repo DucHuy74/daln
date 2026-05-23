@@ -6,7 +6,9 @@ import com.xxxx.ddd.application.mapper.UserStoryMapper;
 import com.xxxx.ddd.application.model.dto.request.SprintCreateRequest;
 import com.xxxx.ddd.application.model.dto.response.SprintResponse;
 import com.xxxx.ddd.application.model.dto.response.UserStoryResponse;
+import com.xxxx.ddd.application.port.async.UserStoryEventPort;
 import com.xxxx.ddd.application.service.sprint.SprintAppService;
+import com.xxxx.ddd.application.support.TransactionalEvents;
 import com.xxxx.ddd.common.exception.ErrorCode;
 import com.xxxx.dddd.domain.event.UserStoryMovedEvent;
 import com.xxxx.dddd.domain.exception.AppException;
@@ -22,10 +24,10 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -40,8 +42,7 @@ public class SprintAppServiceImpl implements SprintAppService {
     UserStoryRepository userStoryRepository;
     SprintMapper sprintMapper;
     UserStoryMapper userStoryMapper;
-
-    ApplicationEventPublisher publisher;
+    UserStoryEventPort userStoryEventPort;
 
     //Create Sprint
     @Override
@@ -98,16 +99,23 @@ public class SprintAppServiceImpl implements SprintAppService {
         List<UserStory> stories = userStoryRepository.findBySprint_Id(sprintId);
         String workspaceId = sprint.getWorkspace().getId();
 
-        for (UserStory story : stories) {
-            publisher.publishEvent(
-                    new UserStoryMovedEvent(
-                            story.getId(),
-                            sprintId,
-                            null,
-                            workspaceId
-                    )
-            );
+        if (stories.isEmpty()) {
+            log.warn("Sprint {} started with no user stories — no USER_STORY_MOVED events", sprintId);
+            return;
         }
+
+        List<UserStoryMovedEvent> moveEvents = stories.stream()
+                .map(story -> new UserStoryMovedEvent(
+                        story.getId(),
+                        sprintId,
+                        null,
+                        workspaceId
+                ))
+                .toList();
+
+        TransactionalEvents.afterCommit(() ->
+                moveEvents.forEach(userStoryEventPort::publishMoved)
+        );
     }
 
     //Complete Sprint
@@ -129,6 +137,7 @@ public class SprintAppServiceImpl implements SprintAppService {
         String backlogId = sprint.getWorkspace().getBacklog().getId();
 
         List<UserStory> stories = userStoryRepository.findBySprint_Id(sprintId);
+        List<UserStoryMovedEvent> moveEvents = new ArrayList<>();
 
         for (UserStory story : stories) {
             if (story.getStatus() != UserStoryStatus.Done) {
@@ -137,15 +146,19 @@ public class SprintAppServiceImpl implements SprintAppService {
                 story.setStatus(UserStoryStatus.ToDo);
                 userStoryRepository.save(story);
 
-                publisher.publishEvent(
-                        new UserStoryMovedEvent(
-                                story.getId(),
-                                null,
-                                backlogId,
-                                workspaceId
-                        )
-                );
+                moveEvents.add(new UserStoryMovedEvent(
+                        story.getId(),
+                        null,
+                        backlogId,
+                        workspaceId
+                ));
             }
+        }
+
+        if (!moveEvents.isEmpty()) {
+            TransactionalEvents.afterCommit(() ->
+                    moveEvents.forEach(userStoryEventPort::publishMoved)
+            );
         }
     }
 

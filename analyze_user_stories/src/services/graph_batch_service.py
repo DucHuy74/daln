@@ -7,6 +7,8 @@ from constant import (
     PRIORITY_W_SIMILARITY,
     PRIORITY_W_RULE,
     PRIORITY_REDUNDANCY_ALPHA,
+    REDUNDANCY_GRAPH_TOP_K,
+    REDUNDANCY_GRAPH_MIN_SCORE,
 )
 from src.utils import sorted_term_pair
 
@@ -99,6 +101,7 @@ class GraphBatchService:
 
             print("[BATCH] Building classification dataset...")
             stories = self.redundancy_service.build_story_schema(rows)
+            print(f"[BATCH] Stories for classification: {len(stories)}")
 
             similarity_rows = self.neo4j_service.load_similarity_map(workspace_id)
             similarity_map = {}
@@ -146,18 +149,50 @@ class GraphBatchService:
             metrics = model_result.get("metrics", {"note": model_result.get("reason", "not_available")})
 
             scored_pairs = self.redundancy_service.predict_redundancy(model, pair_df)
+            if not scored_pairs.empty:
+                scored_pairs = scored_pairs.copy()
+                scored_pairs["redundancy_prob"] = (
+                    scored_pairs["redundancy_prob"].fillna(0.0).clip(0.0, 1.0)
+                )
+
             group_map = self.redundancy_service.build_groups(scored_pairs, stories)
             redundancy_score_map = self.redundancy_service.aggregate_story_scores(scored_pairs, stories)
 
+            if scored_pairs.empty:
+                export_pairs = scored_pairs
+            else:
+                ranked = scored_pairs.sort_values("redundancy_prob", ascending=False)
+                if REDUNDANCY_GRAPH_MIN_SCORE > 0:
+                    ranked = ranked[ranked["redundancy_prob"] >= REDUNDANCY_GRAPH_MIN_SCORE]
+                export_pairs = ranked.head(REDUNDANCY_GRAPH_TOP_K)
+                if export_pairs.empty:
+                    export_pairs = scored_pairs.sort_values(
+                        "redundancy_prob", ascending=False
+                    ).head(REDUNDANCY_GRAPH_TOP_K)
+
+            max_prob = (
+                float(export_pairs["redundancy_prob"].max())
+                if not export_pairs.empty
+                else 0.0
+            )
+            print(f"[BATCH] Redundancy export candidates: {len(export_pairs)} max_prob={max_prob:.4f}")
+
+            self.neo4j_service.clear_redundancy_pairs(workspace_id)
+
             pair_outputs = []
-            for _, row in scored_pairs[scored_pairs["is_redundant"] == True].iterrows():
+            for _, row in export_pairs.iterrows():
+                left_id = row.get("left_story_id")
+                right_id = row.get("right_story_id")
+                if not left_id or not right_id:
+                    continue
                 pair_outputs.append(
                     {
-                        "left_story_id": row["left_story_id"],
-                        "right_story_id": row["right_story_id"],
+                        "left_story_id": str(left_id),
+                        "right_story_id": str(right_id),
                         "redundancy_prob": float(row["redundancy_prob"]),
-                        "group_id": group_map.get(row["left_story_id"], "group_0"),
+                        "group_id": group_map.get(left_id, "group_0"),
                         "model_name": model_name,
+                        "is_redundant": bool(row["is_redundant"]),
                     }
                 )
 
@@ -197,10 +232,17 @@ class GraphBatchService:
                     }
                 )
 
-            self.neo4j_service.save_redundancy_pairs(workspace_id, pair_outputs)
             self.neo4j_service.save_story_priority_v2(workspace_id, story_outputs)
+            self.neo4j_service.save_redundancy_pairs(workspace_id, pair_outputs)
             self.neo4j_service.save_classification_metrics(workspace_id, model_name, metrics)
-            print(f"[BATCH] Classification model={model_name} pairs_saved={len(pair_outputs)}")
+            redundant_edges = self.neo4j_service.count_redundancy_pairs(workspace_id)
+            redundant_count = int(scored_pairs["is_redundant"].sum()) if not scored_pairs.empty else 0
+            print(
+                f"[BATCH] Classification model={model_name} "
+                f"pairs_exported={len(pair_outputs)} "
+                f"redundant_edges_in_db={redundant_edges} "
+                f"redundant_above_threshold={redundant_count}"
+            )
 
             print(f"[BATCH] DONE workspace: {workspace_id}")
 

@@ -4,7 +4,9 @@ import com.xxxx.ddd.application.mapper.UserStoryMapper;
 import com.xxxx.ddd.application.model.dto.request.UserStoryCreateRequest;
 import com.xxxx.ddd.application.model.dto.request.UserStoryStatusUpdateRequest;
 import com.xxxx.ddd.application.model.dto.response.UserStoryResponse;
+import com.xxxx.ddd.application.port.async.UserStoryEventPort;
 import com.xxxx.ddd.application.service.userstory.UserStoryAppService;
+import com.xxxx.ddd.application.support.TransactionalEvents;
 import com.xxxx.ddd.common.exception.ErrorCode;
 import com.xxxx.dddd.domain.event.UserStoryCreatedEvent;
 import com.xxxx.dddd.domain.exception.AppException;
@@ -19,7 +21,6 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,7 +35,7 @@ public class UserStoryAppServiceImpl implements UserStoryAppService {
     WorkspaceRepository workspaceRepository;
     UserStoryMapper userStoryMapper;
 
-    ApplicationEventPublisher publisher;
+    UserStoryEventPort userStoryEventPort;
 
     @Override
     @Transactional
@@ -58,16 +59,18 @@ public class UserStoryAppServiceImpl implements UserStoryAppService {
 
         stories = userStoryRepository.saveAll(stories);
 
-        stories.forEach(story ->
-                publisher.publishEvent(
-                        new UserStoryCreatedEvent(
-                                story.getId(),
-                                story.getStoryText(),
-                                null,
-                                backlog.getId(),
-                                workspace.getId()
-                        )
-                )
+        List<UserStoryCreatedEvent> createdEvents = stories.stream()
+                .map(story -> new UserStoryCreatedEvent(
+                        story.getId(),
+                        story.getStoryText(),
+                        null,
+                        backlog.getId(),
+                        workspace.getId()
+                ))
+                .toList();
+
+        TransactionalEvents.afterCommit(() ->
+                createdEvents.forEach(userStoryEventPort::publishCreated)
         );
 
         return userStoryMapper.toResponses(stories);

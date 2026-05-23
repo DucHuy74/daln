@@ -209,20 +209,44 @@ class Neo4jService:
         """
         return self.conn.execute(query, {"ws": workspace_id})
 
+    def clear_redundancy_pairs(self, workspace_id):
+        """Xóa cạnh REDUNDANT_WITH cũ của workspace trước khi ghi batch mới."""
+        query = """
+        MATCH (:UserStory)-[r:REDUNDANT_WITH {workspace_id: $ws}]->(:UserStory)
+        DELETE r
+        """
+        self.conn.execute(query, {"ws": workspace_id})
+
     def save_redundancy_pairs(self, workspace_id, pairs):
         if not pairs:
-            return
+            print(f"[NEO4J] REDUNDANT_WITH: nothing to save for workspace={workspace_id}")
+            return 0
 
         query = """
         UNWIND $pairs AS row
         MERGE (a:UserStory {id: row.left_story_id})
+        SET a.workspace_id = coalesce(a.workspace_id, $ws)
         MERGE (b:UserStory {id: row.right_story_id})
+        SET b.workspace_id = coalesce(b.workspace_id, $ws)
         MERGE (a)-[r:REDUNDANT_WITH {workspace_id: $ws}]->(b)
         SET r.score = row.redundancy_prob,
             r.group_id = row.group_id,
-            r.model = row.model_name
+            r.model = row.model_name,
+            r.is_redundant = coalesce(row.is_redundant, false)
+        RETURN count(r) AS written
         """
-        self.conn.execute(query, {"ws": workspace_id, "pairs": pairs})
+        rows = self.conn.execute(query, {"ws": workspace_id, "pairs": pairs})
+        written = rows[0]["written"] if rows else len(pairs)
+        print(f"[NEO4J] REDUNDANT_WITH saved: {written} edges workspace={workspace_id}")
+        return written
+
+    def count_redundancy_pairs(self, workspace_id):
+        query = """
+        MATCH (:UserStory)-[r:REDUNDANT_WITH {workspace_id: $ws}]->(:UserStory)
+        RETURN count(r) AS total
+        """
+        rows = self.conn.execute(query, {"ws": workspace_id})
+        return rows[0]["total"] if rows else 0
 
     def save_story_priority_v2(self, workspace_id, story_outputs):
         if not story_outputs:

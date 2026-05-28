@@ -3,16 +3,23 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../auth/auth_service.dart';
 import '../../models/backlog/user_story_model.dart';
+import '../../mockdata/backlog/user_story_dataset.dart';
 
 class BacklogService {
   static const String _baseUrl = 'http://localhost:8080/api';
 
   Future<List<UserStoryModel>> getBacklog(String workspaceId) async {
-    final url = Uri.parse(
-      '$_baseUrl/user-stories/workspace/$workspaceId/backlog',
-    );
-
     try {
+      final useMock = dotenv.env['USE_MOCK'] == 'true';
+      
+      if (useMock) {
+        await Future.delayed(const Duration(seconds: 1)); // Mock network delay
+        return UserStoryDataset.userStories;
+      }
+
+      final url = Uri.parse(
+        '$_baseUrl/user-stories/workspace/$workspaceId/backlog',
+      );
       final token = await AuthService.instance.getValidAccessToken();
       final response = await http.get(
         url,

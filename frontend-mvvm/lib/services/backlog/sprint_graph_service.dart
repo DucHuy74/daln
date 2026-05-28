@@ -23,6 +23,14 @@ class SprintGraphService {
     
     print("Connecting to Graph API: \$url");
 
+    final useMock = dotenv.env['USE_MOCK'] == 'true';
+    if (useMock) {
+      await Future.delayed(const Duration(seconds: 1));
+      return {
+        'nodes': [],
+        'edges': []
+      };
+    }
     final query = '''
       query WorkspaceGraph(\$workspaceId: String, \$backlogId: String, \$sprintId: String) {
           workspaceGraph(

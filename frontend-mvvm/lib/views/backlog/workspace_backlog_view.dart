@@ -8,6 +8,7 @@ import 'sprint_section.dart';
 import '../../components/home/backlog_section.dart';
 import 'backlog_graph_screen.dart';
 import 'sprint_graph_screen.dart';
+import 'summary_view.dart';
 
 class WorkspaceBacklogView extends StatefulWidget {
   final WorkspaceModel workspace;
@@ -214,6 +215,12 @@ class _WorkspaceBacklogViewState extends State<WorkspaceBacklogView> {
             ),
           );
         }
+
+      case 'Summary':
+        return SummaryView(
+          workspace: widget.workspace,
+          viewModel: _viewModel,
+        );
 
       default:
         return Center(

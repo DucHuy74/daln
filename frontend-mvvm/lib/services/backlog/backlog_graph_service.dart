@@ -15,12 +15,24 @@ class GraphService {
     final url = Uri.parse('$_baseUrl/graphql');
     final token = await AuthService.instance.getValidAccessToken();
 
-    final query = '''
+    final boolStr = source == 'BATCH' ? 'true' : 'null';
+
+    final useMock = dotenv.env['USE_MOCK'] == 'true';
+    if (useMock) {
+      await Future.delayed(const Duration(seconds: 1));
+      return {
+        'nodes': [],
+        'edges': []
+      };
+    }
+
+    final query =
+        '''
       query WorkspaceGraph(\$workspaceId: ID!, \$backlogId: ID) {
           workspaceGraph(
               workspaceId: \$workspaceId
-              includeSimilarity: true
-              includeAssociation: true
+              includeSimilarity: $boolStr
+              includeAssociation: $boolStr
               minScore: 0.5
               minConfidence: 0.3
               sprintId: null
@@ -57,8 +69,8 @@ class GraphService {
           'query': query,
           'variables': {
             'workspaceId': workspaceId,
-            'backlogId': backlogId.isEmpty ? null : backlogId,
-          }
+            'backlogId': null, // Force null to match friend's Postman
+          },
         }),
       );
 
@@ -75,7 +87,9 @@ class GraphService {
         }
         return null;
       } else {
-        print('Lỗi gọi Graph API: Status ${response.statusCode} - ${response.body}');
+        print(
+          'Lỗi gọi Graph API: Status ${response.statusCode} - ${response.body}',
+        );
         return null;
       }
     } catch (e) {

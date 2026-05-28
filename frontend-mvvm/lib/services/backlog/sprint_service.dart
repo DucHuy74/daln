@@ -2,19 +2,27 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../auth/auth_service.dart';
-import '../../models/backlog/sprint_model.dart'; 
+import '../../models/backlog/sprint_model.dart';
 import '../../models/backlog/user_story_model.dart';
+import '../../mockdata/backlog/sprint_dataset.dart';
+import '../../mockdata/backlog/user_story_dataset.dart';
 
 class SprintService {
   static const String _baseUrl = 'http://localhost:8080/api';
 
   // --- Lấy danh sách Sprint ---
   Future<List<SprintModel>> getSprints(String workspaceId) async {
-    final url = Uri.parse('$_baseUrl/sprints/workspace/$workspaceId');
-
     try {
-      final token = await AuthService.instance.getValidAccessToken();
+      final useMock = dotenv.env['USE_MOCK'] == 'true';
       
+      if (useMock) {
+        await Future.delayed(const Duration(seconds: 1)); // Mock network delay
+        return SprintDataset.sprints;
+      }
+
+      final url = Uri.parse('$_baseUrl/sprints/workspace/$workspaceId');
+      final token = await AuthService.instance.getValidAccessToken();
+
       final response = await http.get(
         url,
         headers: {
@@ -31,16 +39,15 @@ class SprintService {
           return list.map((e) => SprintModel.fromJson(e)).toList();
         }
       }
-      
+
       print('Get Sprints Error: ${response.statusCode} - ${response.body}');
       return [];
-
     } catch (e) {
       print('Exception Get Sprints: $e');
       return [];
     }
   }
-  
+
   // --- Tạo Sprint ---
   Future<bool> createSprint({
     required String workspaceId,
@@ -52,7 +59,7 @@ class SprintService {
 
     try {
       final token = await AuthService.instance.getValidAccessToken();
-      
+
       String formatDate(DateTime date) {
         return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
       }
@@ -67,7 +74,7 @@ class SprintService {
         body: jsonEncode({
           "name": name,
           "startDate": formatDate(startDate),
-          "endDate": formatDate(endDate)
+          "endDate": formatDate(endDate),
         }),
       );
 
@@ -90,7 +97,9 @@ class SprintService {
     required String sprintId,
     required String userStoryId,
   }) async {
-    final url = Uri.parse('$_baseUrl/sprints/$sprintId/user-stories/$userStoryId');
+    final url = Uri.parse(
+      '$_baseUrl/sprints/$sprintId/user-stories/$userStoryId',
+    );
 
     try {
       final token = await AuthService.instance.getValidAccessToken();
@@ -107,10 +116,10 @@ class SprintService {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final body = jsonDecode(response.body);
         if (body['code'] == 1000) {
-           return true;
+          return true;
         }
       }
-      
+
       print('Add Story Error: ${response.statusCode} - ${response.body}');
       return false;
     } catch (e) {
@@ -121,11 +130,17 @@ class SprintService {
 
   // --- Lấy danh sách User Stories trong Sprint ---
   Future<List<UserStoryModel>> getStoriesInSprint(String sprintId) async {
-    final url = Uri.parse('$_baseUrl/sprints/$sprintId/user-stories');
-
     try {
-      final token = await AuthService.instance.getValidAccessToken();
+      final useMock = dotenv.env['USE_MOCK'] == 'true';
       
+      if (useMock) {
+        await Future.delayed(const Duration(seconds: 1)); // Mock delay
+        return UserStoryDataset.userStories;
+      }
+
+      final url = Uri.parse('$_baseUrl/sprints/$sprintId/user-stories');
+      final token = await AuthService.instance.getValidAccessToken();
+
       final response = await http.get(
         url,
         headers: {
@@ -155,7 +170,7 @@ class SprintService {
 
     try {
       final token = await AuthService.instance.getValidAccessToken();
-      
+
       final response = await http.post(
         url,
         headers: {
@@ -184,7 +199,7 @@ class SprintService {
 
     try {
       final token = await AuthService.instance.getValidAccessToken();
-      
+
       final response = await http.post(
         url,
         headers: {
@@ -198,13 +213,17 @@ class SprintService {
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
         if (body['code'] == 1000) {
-           return true;
+          return true;
         } else {
-           print('Complete Sprint Failed: Code is not 1000. Response: ${response.body}');
-           return false;
+          print(
+            'Complete Sprint Failed: Code is not 1000. Response: ${response.body}',
+          );
+          return false;
         }
       } else {
-        print('Complete Sprint Error: Status ${response.statusCode} - ${response.body}');
+        print(
+          'Complete Sprint Error: Status ${response.statusCode} - ${response.body}',
+        );
         return false;
       }
     } catch (e) {

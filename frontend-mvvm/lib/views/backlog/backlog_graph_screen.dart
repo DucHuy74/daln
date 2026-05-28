@@ -83,7 +83,7 @@ class _BacklogGraphScreenContent extends StatefulWidget {
 
 class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
     with SingleTickerProviderStateMixin {
-  Map<String, Offset> nodePositions = {};
+  final ValueNotifier<Map<String, Offset>> _positionsNotifier = ValueNotifier({});
   Set<String> edges = {};
 
   Set<String> expandedSubjects = {};
@@ -95,6 +95,8 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
   bool _isLassoMode = false;
   List<Offset> _drawnPoints = [];
   Set<String> _selectedNodeKeys = {};
+  
+  Offset? _nodeDragOffset;
 
   late AnimationController _spinController;
   final TransformationController _transformationController =
@@ -164,7 +166,7 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
   String _makeObjectKey(String name) => "obj_$name";
 
   void _calculateLayout(List<AnalyzedStory> stories) {
-    nodePositions.clear();
+    Map<String, Offset> newPositions = {};
     edges.clear();
 
     List<String> subjects = _getUniqueSubjects(stories);
@@ -176,7 +178,7 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
     const double spacing = 120;
 
     for (var subName in subjects) {
-      nodePositions["sub_$subName"] = Offset(subjectX, currentSubjectY);
+      newPositions["sub_$subName"] = Offset(subjectX, currentSubjectY);
       currentSubjectY += spacing;
     }
 
@@ -204,29 +206,33 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
 
     double currentVerbY = 140;
     for (var verbKey in uniqueVerbs) {
-      nodePositions[verbKey] = Offset(verbX, currentVerbY);
+      newPositions[verbKey] = Offset(verbX, currentVerbY);
       currentVerbY += spacing;
     }
 
     double currentObjY = 140;
     for (var objKey in uniqueObjects) {
-      nodePositions[objKey] = Offset(objectX, currentObjY);
+      newPositions[objKey] = Offset(objectX, currentObjY);
       currentObjY += spacing;
     }
+
+    _positionsNotifier.value = newPositions;
   }
 
   void _avoidCollision(String movedKey, Offset newPos) {
     const minDist = 70.0;
-    nodePositions[movedKey] = newPos;
-    for (var key in nodePositions.keys) {
+    final map = Map<String, Offset>.from(_positionsNotifier.value);
+    map[movedKey] = newPos;
+    for (var key in map.keys) {
       if (key == movedKey) continue;
-      final other = nodePositions[key]!;
+      final other = map[key]!;
       final dist = (newPos - other).distance;
       if (dist < minDist && dist > 0) {
         final push = (other - newPos) / dist * (minDist - dist) * 0.5;
-        nodePositions[key] = other + push;
+        map[key] = other + push;
       }
     }
+    _positionsNotifier.value = map;
   }
 
   int _countStoriesForObject(String objectName, List<AnalyzedStory> stories) {
@@ -276,7 +282,7 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
     setState(() {
       if (_drawnPoints.length > 2) {
         Path selectionPath = Path()..addPolygon(_drawnPoints, true);
-        nodePositions.forEach((key, pos) {
+        _positionsNotifier.value.forEach((key, pos) {
           if (selectionPath.contains(pos)) {
             _selectedNodeKeys.add(key);
           }
@@ -340,47 +346,52 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
                     onPanStart: _isLassoMode ? _onLassoPanStart : null,
                     onPanUpdate: _isLassoMode ? _onLassoPanUpdate : null,
                     onPanEnd: _isLassoMode ? _onLassoPanEnd : null,
-                    child: SizedBox(
-                      width: 2500,
-                      height: 2500,
-                      child: Stack(
-                        children: [
-                          AnimatedBuilder(
-                            animation: _spinController,
-                            builder: (_, __) => CustomPaint(
-                              size: const Size(2500, 2500),
-                              painter: GraphLinesPainter(
-                                nodePositions: nodePositions,
-                                edges: edges,
-                                highlightedEdges:
-                                    highlightedEdges, // Chuyền vào đây
-                                theme: theme,
+                    child: ValueListenableBuilder<Map<String, Offset>>(
+                      valueListenable: _positionsNotifier,
+                      builder: (context, positions, child) {
+                        return SizedBox(
+                          width: 2500,
+                          height: 2500,
+                          child: Stack(
+                            children: [
+                              AnimatedBuilder(
+                                animation: _spinController,
+                                builder: (_, __) => CustomPaint(
+                                  size: const Size(2500, 2500),
+                                  painter: GraphLinesPainter(
+                                    nodePositions: positions,
+                                    edges: edges,
+                                    highlightedEdges:
+                                        highlightedEdges, // Chuyền vào đây
+                                    theme: theme,
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
-                          CustomPaint(
-                            size: const Size(2500, 2500),
-                            painter: ZoningPainter(
-                              nodePositions: nodePositions,
-                              zonedSubjects: zonedSubjects,
-                              mockData: vm.stories,
-                              isObjectASubject: (obj) =>
-                                  _isObjectASubject(obj, vm.stories),
-                              makeObjectKey: _makeObjectKey,
-                              theme: theme,
-                            ),
-                          ),
-                          if (_isLassoMode && _drawnPoints.isNotEmpty)
-                            CustomPaint(
-                              size: const Size(2500, 2500),
-                              painter: LassoPainter(
-                                drawnPoints: _drawnPoints,
-                                theme: theme,
+                              CustomPaint(
+                                size: const Size(2500, 2500),
+                                painter: ZoningPainter(
+                                  nodePositions: positions,
+                                  zonedSubjects: zonedSubjects,
+                                  mockData: vm.stories,
+                                  isObjectASubject: (obj) =>
+                                      _isObjectASubject(obj, vm.stories),
+                                  makeObjectKey: _makeObjectKey,
+                                  theme: theme,
+                                ),
                               ),
-                            ),
-                          ..._buildNodeWidgets(vm.stories),
-                        ],
-                      ),
+                              if (_isLassoMode && _drawnPoints.isNotEmpty)
+                                CustomPaint(
+                                  size: const Size(2500, 2500),
+                                  painter: LassoPainter(
+                                    drawnPoints: _drawnPoints,
+                                    theme: theme,
+                                  ),
+                                ),
+                              ..._buildNodeWidgets(vm.stories, positions),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -425,7 +436,7 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
     );
   }
 
-  List<Widget> _buildNodeWidgets(List<AnalyzedStory> stories) {
+  List<Widget> _buildNodeWidgets(List<AnalyzedStory> stories, Map<String, Offset> positions) {
     List<Widget> widgets = [];
     Set<String> renderedKeys = {};
 
@@ -439,21 +450,21 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
       }
     }
 
-    for (var key in nodePositions.keys) {
+    for (var key in positions.keys) {
       if (renderedKeys.contains(key)) continue;
       renderedKeys.add(key);
 
       if (key.startsWith("sub_")) {
         String name = key.replaceFirst("sub_", "");
-        widgets.add(_buildNode(key, name, NodeType.subject, null, stories));
+        widgets.add(_buildNode(key, name, NodeType.subject, null, stories, positions[key]!));
       } else if (key.startsWith("verb_")) {
         String name = key.replaceFirst("verb_", "");
         AnalyzedStory? repStory = findRepresentativeStory(name, true);
-        widgets.add(_buildNode(key, name, NodeType.verb, repStory, stories));
+        widgets.add(_buildNode(key, name, NodeType.verb, repStory, stories, positions[key]!));
       } else if (key.startsWith("obj_")) {
         String name = key.replaceFirst("obj_", "");
         AnalyzedStory? repStory = findRepresentativeStory(name, false);
-        widgets.add(_buildNode(key, name, NodeType.object, repStory, stories));
+        widgets.add(_buildNode(key, name, NodeType.object, repStory, stories, positions[key]!));
       }
     }
 
@@ -466,8 +477,8 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
     NodeType type,
     AnalyzedStory? story,
     List<AnalyzedStory> stories,
+    Offset pos,
   ) {
-    Offset pos = nodePositions[key]!;
     double width = type == NodeType.verb ? 64 : 110;
     double height = type == NodeType.verb
         ? 64
@@ -492,13 +503,27 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
             onEnter: (_) => setState(() => _hoveredNodeKey = key),
             onExit: (_) => setState(() => _hoveredNodeKey = null),
             child: GestureDetector(
-              onPanUpdate: (d) {
+              onPanStart: (d) {
                 if (!_isZoningMode && !_isLassoMode) {
-                  final scale = _transformationController.value
-                      .getMaxScaleOnAxis();
-                  final localDelta = d.delta / scale;
-                  setState(() => _avoidCollision(key, pos + localDelta));
+                  final RenderBox renderBox = context.findRenderObject() as RenderBox;
+                  final localPos = renderBox.globalToLocal(d.globalPosition);
+                  final scenePoint = _transformationController.toScene(localPos);
+                  // Lưu lại khoảng cách từ tâm node đến con trỏ chuột
+                  _nodeDragOffset = pos - scenePoint;
                 }
+              },
+              onPanUpdate: (d) {
+                if (!_isZoningMode && !_isLassoMode && _nodeDragOffset != null) {
+                  final RenderBox renderBox = context.findRenderObject() as RenderBox;
+                  final localPos = renderBox.globalToLocal(d.globalPosition);
+                  final scenePoint = _transformationController.toScene(localPos);
+                  
+                  // Chỉ gọi hàm update logic (không dùng setState để tránh rebuild cả InteractiveViewer)
+                  _avoidCollision(key, scenePoint + _nodeDragOffset!);
+                }
+              },
+              onPanEnd: (d) {
+                _nodeDragOffset = null;
               },
               onTap: () {
                 if (_isLassoMode) {

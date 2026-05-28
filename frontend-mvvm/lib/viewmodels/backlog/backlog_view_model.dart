@@ -3,10 +3,11 @@ import '../../services/backlog/backlog_service.dart';
 import '../../services/backlog/sprint_service.dart';
 import '../../models/backlog/user_story_model.dart';
 import '../../models/backlog/sprint_model.dart';
+import '../../core/locator.dart';
 
 class BacklogViewModel extends ChangeNotifier {
-  final BacklogService _backlogService = BacklogService();
-  final SprintService _sprintService = SprintService();
+  final _backlogService = locator<BacklogService>();
+  final _sprintService = locator<SprintService>();
 
   List<UserStoryModel> _backlogList = [];
   List<UserStoryModel> get backlogList => _backlogList;

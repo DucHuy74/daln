@@ -14,6 +14,7 @@ import 'widgets/start_sprint_panel.dart';
 import 'widgets/node_tooltip.dart';
 import 'widgets/graph_node_widgets.dart';
 import '../../services/home/workspace_service.dart';
+import '../../services/backlog/userstory_service.dart';
 
 // =============================================================================
 // CLASS WRAPPER: BỌC PROVIDER
@@ -1028,15 +1029,70 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
                         ],
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        fullStoryText,
-                        style: TextStyle(
-                          color: theme.textPrimary,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                          height: 1.5,
+                      if (hasRealText)
+                        Text(
+                          fullStoryText,
+                          style: TextStyle(
+                            color: theme.textPrimary,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            height: 1.5,
+                          ),
+                        )
+                      else
+                        FutureBuilder<Map<String, dynamic>?>(
+                          future: UserStoryService().getUserStoryById(story.id),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8.0,
+                                ),
+                                child: Row(
+                                  children: [
+                                    SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: theme.verbBorder,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      'Loading full story text...',
+                                      style: TextStyle(
+                                        color: theme.textSecondary,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+
+                            String displayText = fullStoryText;
+                            if (snapshot.hasData &&
+                                snapshot.data!['storyText'] != null) {
+                              displayText = snapshot.data!['storyText'];
+                              // Cache lại để lần sau mở sẽ không phải load lại
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                vm.userStoryTexts[story.id] = displayText;
+                              });
+                            }
+
+                            return Text(
+                              displayText,
+                              style: TextStyle(
+                                color: theme.textPrimary,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                                height: 1.5,
+                              ),
+                            );
+                          },
                         ),
-                      ),
                     ],
                   ),
                 ),

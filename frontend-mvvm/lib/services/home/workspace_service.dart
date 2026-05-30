@@ -5,6 +5,7 @@ import '../../models/home/workspace_model.dart';
 import '../auth/auth_service.dart';
 import '../../models/backlog/member_model.dart';
 import '../../mockdata/home/workspace_dataset.dart';
+import '../../mockdata/backlog/member_dataset.dart';
 
 class WorkspaceService {
   static const String url = 'http://localhost:8080/api/workspace';
@@ -13,7 +14,7 @@ class WorkspaceService {
   Future<List<WorkspaceModel>> getWorkspaces() async {
     try {
       final useMock = dotenv.env['USE_MOCK'] == 'true';
-      
+
       if (useMock) {
         await Future.delayed(const Duration(seconds: 1)); // Mock network delay
         return WorkspaceDataset.workspaces;
@@ -93,6 +94,12 @@ class WorkspaceService {
 
   Future<List<MemberModel>> getWorkspaceMembers(String workspaceId) async {
     try {
+      final useMock = dotenv.env['USE_MOCK'] == 'true';
+      if (useMock) {
+        await Future.delayed(const Duration(seconds: 1)); // Mock network delay
+        return MemberDataset.members;
+      }
+
       final token = await AuthService.instance.getValidAccessToken();
       if (token == null) return [];
 

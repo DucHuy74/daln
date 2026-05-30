@@ -106,19 +106,38 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
     if (_priorityFilter <= 0.0) return {};
     Set<String> dimmed = {};
     final vm = context.read<GraphViewModel>();
+
+    // Collect max priority per visual node key across all stories
+    Map<String, double> keyMaxPriority = {};
+
     for (var s in vm.stories) {
-      if ((s.subjectPriority ?? 0.0) < _priorityFilter)
-        dimmed.add("sub_${s.subject}");
-      if ((s.verbPriority ?? 0.0) < _priorityFilter)
-        dimmed.add("verb_${s.verb}");
-      if ((s.objectPriority ?? 0.0) < _priorityFilter) {
-        dimmed.add(
-          _isObjectASubject(s.object, vm.stories)
-              ? "sub_${s.object}"
-              : _makeObjectKey(s.object),
-        );
+      String subKey = 'sub_${s.subject}';
+      String verbKey = 'verb_${s.verb}';
+      String objKey = _isObjectASubject(s.object, vm.stories)
+          ? 'sub_${s.object}'
+          : _makeObjectKey(s.object);
+
+      if (s.subjectPriority != null) {
+        keyMaxPriority[subKey] =
+            max(keyMaxPriority[subKey] ?? 0.0, s.subjectPriority!);
+      }
+      if (s.verbPriority != null) {
+        keyMaxPriority[verbKey] =
+            max(keyMaxPriority[verbKey] ?? 0.0, s.verbPriority!);
+      }
+      if (s.objectPriority != null) {
+        keyMaxPriority[objKey] =
+            max(keyMaxPriority[objKey] ?? 0.0, s.objectPriority!);
       }
     }
+
+    // Dim only nodes that have a known priority below the filter threshold
+    for (var entry in keyMaxPriority.entries) {
+      if (entry.value < _priorityFilter) {
+        dimmed.add(entry.key);
+      }
+    }
+
     return dimmed;
   }
 

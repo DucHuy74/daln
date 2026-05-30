@@ -115,6 +115,40 @@ class GraphViewModel extends ChangeNotifier {
       }
     }
 
+    // Truyền priority từ Subject -> Verb qua PERFORM edges
+    for (var edge in edges.where((e) => e['type'] == 'PERFORM')) {
+      String subjectId = edge['from']?.toString() ?? '';
+      String verbId = edge['to']?.toString() ?? '';
+      if (subjectId.isEmpty || verbId.isEmpty) continue;
+
+      double? subPri =
+          nodeMaxPriority[subjectId] ??
+          (nodeIdToNode[subjectId]?['priority'] as num?)?.toDouble();
+      if (subPri != null) {
+        double currentMax = nodeMaxPriority[verbId] ?? 0.0;
+        if (subPri > currentMax) {
+          nodeMaxPriority[verbId] = subPri;
+        }
+      }
+    }
+
+    // Truyền priority từ Verb -> Object qua TARGET edges
+    for (var edge in edges.where((e) => e['type'] == 'TARGET')) {
+      String verbId = edge['from']?.toString() ?? '';
+      String objectId = edge['to']?.toString() ?? '';
+      if (verbId.isEmpty || objectId.isEmpty) continue;
+
+      double? verbPri =
+          nodeMaxPriority[verbId] ??
+          (nodeIdToNode[verbId]?['priority'] as num?)?.toDouble();
+      if (verbPri != null) {
+        double currentMax = nodeMaxPriority[objectId] ?? 0.0;
+        if (verbPri > currentMax) {
+          nodeMaxPriority[objectId] = verbPri;
+        }
+      }
+    }
+
     // Find all PERFORM edges (Subject -> Verb)
     var performEdges = edges.where((e) => e['type'] == 'PERFORM');
 

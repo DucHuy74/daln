@@ -10,6 +10,10 @@ class GraphViewModel extends ChangeNotifier {
   String? errorMessage;
   List<AnalyzedStory> stories = [];
 
+  /// Map từ termId (= label của TERM node, ví dụ "customer", "want", "account")
+  /// → priority tối đa (sau khi đã propagate từ USER_STORY qua PERFORM/TARGET)
+  Map<String, double> termPriorities = {};
+
   Future<void> fetchGraphData(
     String workspaceId,
     String backlogId, {
@@ -256,5 +260,22 @@ class GraphViewModel extends ChangeNotifier {
     }
 
     stories = fetchedStories;
+
+    // Expose termPriorities cho UI - bao gồm cả USER_STORY node priorities
+    termPriorities = Map.from(nodeMaxPriority);
+    // Thêm priority từ các USER_STORY nodes (dùng label làm key)
+    for (var node in nodes) {
+      double? p = (node['priority'] as num?)?.toDouble();
+      if (p != null) {
+        String id = node['id']?.toString() ?? '';
+        String label = node['label']?.toString() ?? id;
+        if (!termPriorities.containsKey(id) || termPriorities[id]! < p) {
+          termPriorities[id] = p;
+        }
+        if (!termPriorities.containsKey(label) || termPriorities[label]! < p) {
+          termPriorities[label] = p;
+        }
+      }
+    }
   }
 }

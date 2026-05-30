@@ -98,62 +98,82 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
   List<Offset> _drawnPoints = [];
   Set<String> _selectedNodeKeys = {};
 
-  // --- FILTER STATE ---
-  double _priorityFilter = 0.0;
+  // --- FILTER STATE (dùng ValueNotifier để tránh rebuild cả cây) ---
+  final ValueNotifier<double> _priorityFilterNotifier = ValueNotifier(0.0);
   bool _showFilterSlider = false;
 
-  Set<String> get _dimmedNodeKeys {
-    if (_priorityFilter <= 0.0) return {};
-    Set<String> dimmed = {};
+  // Cache: priority tối đa theo node key — tính 1 lần khi data load
+  Map<String, double> _nodeKeyPriorityCache = {};
+
+  // Cache: set dimmed nodes & edges — chỉ tính lại khi filter thay đổi
+  final ValueNotifier<Set<String>> _dimmedNodeKeysNotifier = ValueNotifier({});
+  final ValueNotifier<Set<String>> _dimmedEdgesNotifier = ValueNotifier({});
+
+  void _buildNodeKeyPriorityCache(List<AnalyzedStory> stories) {
+    _nodeKeyPriorityCache = {};
+
+    // Lấy termPriorities từ ViewModel (đã propagate qua PERFORM/TARGET)
     final vm = context.read<GraphViewModel>();
+    final termPriorities = vm.termPriorities;
 
-    // Collect max priority per visual node key across all stories
-    Map<String, double> keyMaxPriority = {};
-
-    for (var s in vm.stories) {
+    // Với mỗi story, gán priority cho sub/verb/obj key
+    // dựa trên termPriorities[termLabel] (termId = termLabel cho TERM nodes)
+    for (var s in stories) {
       String subKey = 'sub_${s.subject}';
       String verbKey = 'verb_${s.verb}';
-      String objKey = _isObjectASubject(s.object, vm.stories)
+      String objKey = _isObjectASubject(s.object, stories)
           ? 'sub_${s.object}'
           : _makeObjectKey(s.object);
 
-      if (s.subjectPriority != null) {
-        keyMaxPriority[subKey] =
-            max(keyMaxPriority[subKey] ?? 0.0, s.subjectPriority!);
+      // Dùng termPriorities trước, rồi mới fallback về story-level priority
+      double? subPri = termPriorities[s.subject] ?? s.subjectPriority;
+      double? verbPri = termPriorities[s.verb] ?? s.verbPriority;
+      double? objPri = termPriorities[s.object] ?? s.objectPriority;
+
+      if (subPri != null) {
+        _nodeKeyPriorityCache[subKey] = max(
+          _nodeKeyPriorityCache[subKey] ?? 0.0,
+          subPri,
+        );
       }
-      if (s.verbPriority != null) {
-        keyMaxPriority[verbKey] =
-            max(keyMaxPriority[verbKey] ?? 0.0, s.verbPriority!);
+      if (verbPri != null) {
+        _nodeKeyPriorityCache[verbKey] = max(
+          _nodeKeyPriorityCache[verbKey] ?? 0.0,
+          verbPri,
+        );
       }
-      if (s.objectPriority != null) {
-        keyMaxPriority[objKey] =
-            max(keyMaxPriority[objKey] ?? 0.0, s.objectPriority!);
+      if (objPri != null) {
+        _nodeKeyPriorityCache[objKey] = max(
+          _nodeKeyPriorityCache[objKey] ?? 0.0,
+          objPri,
+        );
       }
     }
-
-    // Dim only nodes that have a known priority below the filter threshold
-    for (var entry in keyMaxPriority.entries) {
-      if (entry.value < _priorityFilter) {
-        dimmed.add(entry.key);
-      }
-    }
-
-    return dimmed;
   }
 
-  Set<String> get _dimmedEdges {
-    if (_priorityFilter <= 0.0) return {};
-    Set<String> dimmedE = {};
-    final dimmedN = _dimmedNodeKeys;
+  void _updateDimmedSets(double threshold) {
+    if (threshold <= 0.0) {
+      _dimmedNodeKeysNotifier.value = {};
+      _dimmedEdgesNotifier.value = {};
+      return;
+    }
+
+    final Set<String> dimmedNodes = {};
+    for (var entry in _nodeKeyPriorityCache.entries) {
+      if (entry.value < threshold) dimmedNodes.add(entry.key);
+    }
+
+    final Set<String> dimmedEdges = {};
     for (var edge in edges) {
       final parts = edge.split('|');
-      if (parts.length == 2) {
-        if (dimmedN.contains(parts[0]) || dimmedN.contains(parts[1])) {
-          dimmedE.add(edge);
-        }
+      if (parts.length == 2 &&
+          (dimmedNodes.contains(parts[0]) || dimmedNodes.contains(parts[1]))) {
+        dimmedEdges.add(edge);
       }
     }
-    return dimmedE;
+
+    _dimmedNodeKeysNotifier.value = dimmedNodes;
+    _dimmedEdgesNotifier.value = dimmedEdges;
   }
 
   Offset? _nodeDragOffset;
@@ -163,6 +183,8 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
       TransformationController();
 
   GraphTheme get theme => GraphTheme.of(context);
+
+  double get _priorityFilter => _priorityFilterNotifier.value;
 
   @override
   void initState() {
@@ -183,6 +205,9 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
   void dispose() {
     _spinController.dispose();
     _transformationController.dispose();
+    _priorityFilterNotifier.dispose();
+    _dimmedNodeKeysNotifier.dispose();
+    _dimmedEdgesNotifier.dispose();
     super.dispose();
   }
 
@@ -209,6 +234,9 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
           expandedSubjects.addAll(_getUniqueSubjects(vm.stories));
         }
         _calculateLayout(vm.stories);
+        // Xây dựng cache priority 1 lần duy nhất sau khi data load
+        _buildNodeKeyPriorityCache(vm.stories);
+        _updateDimmedSets(_priorityFilterNotifier.value);
       });
     }
   }
@@ -414,21 +442,28 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
                       child: Stack(
                         clipBehavior: Clip.none,
                         children: [
-                          ValueListenableBuilder<Map<String, Offset>>(
-                            valueListenable: _positionsNotifier,
-                            builder: (context, positions, child) {
-                              return AnimatedBuilder(
-                                animation: _spinController,
-                                builder: (_, __) => CustomPaint(
-                                  size: const Size(2500, 5000),
-                                  painter: GraphLinesPainter(
-                                    nodePositions: positions,
-                                    edges: edges,
-                                    highlightedEdges: highlightedEdges,
-                                    dimmedEdges: _dimmedEdges,
-                                    theme: theme,
-                                  ),
-                                ),
+                          ValueListenableBuilder<Set<String>>(
+                            valueListenable: _dimmedEdgesNotifier,
+                            builder: (context, dimmedEdges, _) {
+                              return ValueListenableBuilder<
+                                Map<String, Offset>
+                              >(
+                                valueListenable: _positionsNotifier,
+                                builder: (context, positions, child) {
+                                  return AnimatedBuilder(
+                                    animation: _spinController,
+                                    builder: (_, __) => CustomPaint(
+                                      size: const Size(2500, 5000),
+                                      painter: GraphLinesPainter(
+                                        nodePositions: positions,
+                                        edges: edges,
+                                        highlightedEdges: highlightedEdges,
+                                        dimmedEdges: dimmedEdges,
+                                        theme: theme,
+                                      ),
+                                    ),
+                                  );
+                                },
                               );
                             },
                           ),
@@ -559,8 +594,6 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
         ? _countStoriesForObject(text, stories)
         : 0;
 
-    bool isDimmed = _dimmedNodeKeys.contains(key);
-
     return ValueListenableBuilder<Map<String, Offset>>(
       valueListenable: _positionsNotifier,
       builder: (context, positions, child) {
@@ -590,7 +623,6 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
                     localPos,
                   );
                   final pos = _positionsNotifier.value[key] ?? Offset.zero;
-                  // Lưu lại khoảng cách từ tâm node đến con trỏ chuột
                   _nodeDragOffset = pos - scenePoint;
                 }
               },
@@ -604,8 +636,6 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
                   final scenePoint = _transformationController.toScene(
                     localPos,
                   );
-
-                  // Chỉ gọi hàm update logic (không dùng setState để tránh rebuild cả InteractiveViewer)
                   _avoidCollision(key, scenePoint + _nodeDragOffset!);
                 }
               },
@@ -625,8 +655,15 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
                   _handleTap(key, text, type, story, stories);
                 }
               },
-              child: Opacity(
-                opacity: isDimmed ? 0.15 : 1.0,
+              // Dùng ValueListenableBuilder chỉ update opacity, không rebuild toàn bộ node
+              child: ValueListenableBuilder<Set<String>>(
+                valueListenable: _dimmedNodeKeysNotifier,
+                builder: (ctx, dimmedKeys, nodeChild) {
+                  return Opacity(
+                    opacity: dimmedKeys.contains(key) ? 0.15 : 1.0,
+                    child: nodeChild,
+                  );
+                },
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
@@ -829,31 +866,37 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'Filter by Priority (Hide < ${_priorityFilter.toStringAsFixed(2)})',
-            style: TextStyle(
-              color: theme.textPrimary,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          Slider(
-            value: _priorityFilter,
-            min: 0.0,
-            max: 1.0,
-            activeColor: theme.verbBorder,
-            inactiveColor: theme.panelBorder,
-            onChanged: (v) {
-              setState(() {
-                _priorityFilter = v;
-              });
-            },
-          ),
-        ],
+      child: ValueListenableBuilder<double>(
+        valueListenable: _priorityFilterNotifier,
+        builder: (ctx, filterVal, _) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Filter by Priority (Hide < ${filterVal.toStringAsFixed(2)})',
+                style: TextStyle(
+                  color: theme.textPrimary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Slider(
+                value: filterVal,
+                min: 0.0,
+                max: 1.0,
+                activeColor: theme.verbBorder,
+                inactiveColor: theme.panelBorder,
+                onChanged: (v) {
+                  // Chỉ cập nhật ValueNotifier và dimmed sets
+                  // Không gọi setState → không rebuild toàn bộ tree!
+                  _priorityFilterNotifier.value = v;
+                  _updateDimmedSets(v);
+                },
+              ),
+            ],
+          );
+        },
       ),
     );
   }

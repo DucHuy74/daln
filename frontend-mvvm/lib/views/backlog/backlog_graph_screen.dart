@@ -83,7 +83,9 @@ class _BacklogGraphScreenContent extends StatefulWidget {
 
 class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
     with SingleTickerProviderStateMixin {
-  final ValueNotifier<Map<String, Offset>> _positionsNotifier = ValueNotifier({});
+  final ValueNotifier<Map<String, Offset>> _positionsNotifier = ValueNotifier(
+    {},
+  );
   Set<String> edges = {};
 
   Set<String> expandedSubjects = {};
@@ -95,7 +97,7 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
   bool _isLassoMode = false;
   List<Offset> _drawnPoints = [];
   Set<String> _selectedNodeKeys = {};
-  
+
   Offset? _nodeDragOffset;
 
   late AnimationController _spinController;
@@ -107,8 +109,7 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
   @override
   void initState() {
     super.initState();
-    // Di chuyển camera tới tọa độ trung tâm (5000, 5000) ngay khi mở màn hình
-    _transformationController.value = Matrix4.identity()..translate(-5000.0, -5000.0);
+    _transformationController.value = Matrix4.identity();
 
     _spinController = AnimationController(
       vsync: this,
@@ -173,11 +174,11 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
     edges.clear();
 
     List<String> subjects = _getUniqueSubjects(stories);
-    const double subjectX = 5150;
-    const double verbX = 5420;
-    const double objectX = 5720;
+    const double subjectX = 350;
+    const double verbX = 650;
+    const double objectX = 950;
 
-    double currentSubjectY = 5140;
+    double currentSubjectY = 200;
     const double spacing = 120;
 
     for (var subName in subjects) {
@@ -207,13 +208,13 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
       edges.add("$verbKey|$targetKey");
     }
 
-    double currentVerbY = 5140;
+    double currentVerbY = 200;
     for (var verbKey in uniqueVerbs) {
       newPositions[verbKey] = Offset(verbX, currentVerbY);
       currentVerbY += spacing;
     }
 
-    double currentObjY = 5140;
+    double currentObjY = 200;
     for (var objKey in uniqueObjects) {
       newPositions[objKey] = Offset(objectX, currentObjY);
       currentObjY += spacing;
@@ -342,9 +343,9 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
                   panEnabled: !_isLassoMode,
                   scaleEnabled: !_isLassoMode,
                   constrained: false,
-                  boundaryMargin: const EdgeInsets.all(double.infinity),
-                  minScale: 0.3,
-                  maxScale: 10.0,
+                  boundaryMargin: const EdgeInsets.all(300),
+                  minScale: 0.2,
+                  maxScale: 3.0,
                   child: GestureDetector(
                     onPanStart: _isLassoMode ? _onLassoPanStart : null,
                     onPanUpdate: _isLassoMode ? _onLassoPanUpdate : null,
@@ -353,15 +354,15 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
                       valueListenable: _positionsNotifier,
                       builder: (context, positions, child) {
                         return SizedBox(
-                          width: 10000,
-                          height: 10000,
+                          width: 2500,
+                          height: 5000,
                           child: Stack(
                             clipBehavior: Clip.none,
                             children: [
                               AnimatedBuilder(
                                 animation: _spinController,
                                 builder: (_, __) => CustomPaint(
-                                  size: const Size(10000, 10000),
+                                  size: const Size(2500, 5000),
                                   painter: GraphLinesPainter(
                                     nodePositions: positions,
                                     edges: edges,
@@ -372,7 +373,7 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
                                 ),
                               ),
                               CustomPaint(
-                                size: const Size(10000, 10000),
+                                size: const Size(2500, 5000),
                                 painter: ZoningPainter(
                                   nodePositions: positions,
                                   zonedSubjects: zonedSubjects,
@@ -440,7 +441,10 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
     );
   }
 
-  List<Widget> _buildNodeWidgets(List<AnalyzedStory> stories, Map<String, Offset> positions) {
+  List<Widget> _buildNodeWidgets(
+    List<AnalyzedStory> stories,
+    Map<String, Offset> positions,
+  ) {
     List<Widget> widgets = [];
     Set<String> renderedKeys = {};
 
@@ -460,15 +464,42 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
 
       if (key.startsWith("sub_")) {
         String name = key.replaceFirst("sub_", "");
-        widgets.add(_buildNode(key, name, NodeType.subject, null, stories, positions[key]!));
+        widgets.add(
+          _buildNode(
+            key,
+            name,
+            NodeType.subject,
+            null,
+            stories,
+            positions[key]!,
+          ),
+        );
       } else if (key.startsWith("verb_")) {
         String name = key.replaceFirst("verb_", "");
         AnalyzedStory? repStory = findRepresentativeStory(name, true);
-        widgets.add(_buildNode(key, name, NodeType.verb, repStory, stories, positions[key]!));
+        widgets.add(
+          _buildNode(
+            key,
+            name,
+            NodeType.verb,
+            repStory,
+            stories,
+            positions[key]!,
+          ),
+        );
       } else if (key.startsWith("obj_")) {
         String name = key.replaceFirst("obj_", "");
         AnalyzedStory? repStory = findRepresentativeStory(name, false);
-        widgets.add(_buildNode(key, name, NodeType.object, repStory, stories, positions[key]!));
+        widgets.add(
+          _buildNode(
+            key,
+            name,
+            NodeType.object,
+            repStory,
+            stories,
+            positions[key]!,
+          ),
+        );
       }
     }
 
@@ -509,19 +540,27 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
             child: GestureDetector(
               onPanStart: (d) {
                 if (!_isZoningMode && !_isLassoMode) {
-                  final RenderBox renderBox = context.findRenderObject() as RenderBox;
+                  final RenderBox renderBox =
+                      context.findRenderObject() as RenderBox;
                   final localPos = renderBox.globalToLocal(d.globalPosition);
-                  final scenePoint = _transformationController.toScene(localPos);
+                  final scenePoint = _transformationController.toScene(
+                    localPos,
+                  );
                   // Lưu lại khoảng cách từ tâm node đến con trỏ chuột
                   _nodeDragOffset = pos - scenePoint;
                 }
               },
               onPanUpdate: (d) {
-                if (!_isZoningMode && !_isLassoMode && _nodeDragOffset != null) {
-                  final RenderBox renderBox = context.findRenderObject() as RenderBox;
+                if (!_isZoningMode &&
+                    !_isLassoMode &&
+                    _nodeDragOffset != null) {
+                  final RenderBox renderBox =
+                      context.findRenderObject() as RenderBox;
                   final localPos = renderBox.globalToLocal(d.globalPosition);
-                  final scenePoint = _transformationController.toScene(localPos);
-                  
+                  final scenePoint = _transformationController.toScene(
+                    localPos,
+                  );
+
                   // Chỉ gọi hàm update logic (không dùng setState để tránh rebuild cả InteractiveViewer)
                   _avoidCollision(key, scenePoint + _nodeDragOffset!);
                 }

@@ -95,4 +95,29 @@ class GraphService {
       return null;
     }
   }
+
+  Future<List<dynamic>?> getBacklogUserStories(
+      String workspaceId, String backlogId) async {
+    try {
+      final token = await AuthService.instance.getValidAccessToken();
+      final url = Uri.parse('$_baseUrl/user-stories/workspace/$workspaceId/backlog?backlogId=$backlogId');
+      
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(utf8.decode(response.bodyBytes));
+        return data['result'] as List<dynamic>?;
+      }
+      return null;
+    } catch (e) {
+      print('REST Error: $e');
+      return null;
+    }
+  }
 }

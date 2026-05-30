@@ -20,13 +20,16 @@ class GraphViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final data = await _service.getBacklogGraph(
-        workspaceId,
-        backlogId,
-        source: source,
-      );
+      final results = await Future.wait([
+        _service.getBacklogGraph(workspaceId, backlogId, source: source),
+        _service.getBacklogUserStories(workspaceId, backlogId),
+      ]);
+
+      final data = results[0] as Map<String, dynamic>?;
+      final userStories = results[1] as List<dynamic>? ?? [];
+
       if (data != null) {
-        _parseGraphToStories(data);
+        _parseGraphToStories(data, userStories);
       } else {
         errorMessage = "Failed to load graph data.";
       }
@@ -38,9 +41,20 @@ class GraphViewModel extends ChangeNotifier {
     }
   }
 
-  void _parseGraphToStories(Map<String, dynamic> data) {
+  void _parseGraphToStories(
+    Map<String, dynamic> data,
+    List<dynamic> rawUserStories,
+  ) {
     final nodes = data['nodes'] as List<dynamic>? ?? [];
     final edges = data['edges'] as List<dynamic>? ?? [];
+
+    // Tạo map user stories
+    Map<String, String> userStoryTexts = {};
+    for (var us in rawUserStories) {
+      if (us['id'] != null && us['storyText'] != null) {
+        userStoryTexts[us['id'].toString()] = us['storyText'].toString();
+      }
+    }
 
     List<AnalyzedStory> fetchedStories = [];
 
@@ -67,6 +81,8 @@ class GraphViewModel extends ChangeNotifier {
           type == 'HAS_OBJECT';
     });
 
+    Map<String, Set<String>> termToUserStories = {};
+
     for (var edge in relatesEdges) {
       String fromId = edge['from']?.toString() ?? '';
       String toId = edge['to']?.toString() ?? '';
@@ -77,17 +93,24 @@ class GraphViewModel extends ChangeNotifier {
       double? storyPriorityTo = (nodeIdToNode[toId]?['priority'] as num?)
           ?.toDouble();
 
-      if (storyPriorityFrom != null &&
-          nodeIdToNode[fromId]?['type'] == 'USER_STORY') {
-        double currentMax = nodeMaxPriority[toId] ?? 0.0;
-        if (storyPriorityFrom > currentMax) {
-          nodeMaxPriority[toId] = storyPriorityFrom;
+      bool fromIsStory = nodeIdToNode[fromId]?['type'] == 'USER_STORY';
+      bool toIsStory = nodeIdToNode[toId]?['type'] == 'USER_STORY';
+
+      if (fromIsStory) {
+        termToUserStories.putIfAbsent(toId, () => {}).add(fromId);
+        if (storyPriorityFrom != null) {
+          double currentMax = nodeMaxPriority[toId] ?? 0.0;
+          if (storyPriorityFrom > currentMax) {
+            nodeMaxPriority[toId] = storyPriorityFrom;
+          }
         }
-      } else if (storyPriorityTo != null &&
-          nodeIdToNode[toId]?['type'] == 'USER_STORY') {
-        double currentMax = nodeMaxPriority[fromId] ?? 0.0;
-        if (storyPriorityTo > currentMax) {
-          nodeMaxPriority[fromId] = storyPriorityTo;
+      } else if (toIsStory) {
+        termToUserStories.putIfAbsent(fromId, () => {}).add(toId);
+        if (storyPriorityTo != null) {
+          double currentMax = nodeMaxPriority[fromId] ?? 0.0;
+          if (storyPriorityTo > currentMax) {
+            nodeMaxPriority[fromId] = storyPriorityTo;
+          }
         }
       }
     }
@@ -116,16 +139,29 @@ class GraphViewModel extends ChangeNotifier {
       double? performConfidence = (performEdge['confidence'] as num?)
           ?.toDouble();
 
+      Set<String> sStories = termToUserStories[subjectId] ?? {};
+      Set<String> vStories = termToUserStories[verbId] ?? {};
+
+      Set<String> svCommon = sStories.intersection(vStories);
+      if (svCommon.isEmpty) {
+        svCommon = sStories.isNotEmpty ? sStories : vStories;
+      }
+
       // Find all TARGET edges starting from this verb (Verb -> Object)
       var targetEdges = edges.where(
         (e) => e['type'] == 'TARGET' && e['from']?.toString() == verbId,
       );
 
       if (targetEdges.isEmpty) {
+        String storyId = svCommon.isNotEmpty
+            ? svCommon.first
+            : "${subjectId}_${verbId}";
+        String rawText = userStoryTexts[storyId] ?? "$subjectLabel $verbLabel";
+
         fetchedStories.add(
           AnalyzedStory(
-            id: "${subjectId}_${verbId}",
-            rawText: "$subjectLabel $verbLabel",
+            id: storyId,
+            rawText: rawText,
             subject: subjectLabel,
             verb: verbLabel,
             object: "Unknown",
@@ -151,10 +187,23 @@ class GraphViewModel extends ChangeNotifier {
           double? targetConfidence = (targetEdge['confidence'] as num?)
               ?.toDouble();
 
+          Set<String> oStories = termToUserStories[objectId] ?? {};
+          Set<String> svoCommon = svCommon.intersection(oStories);
+          if (svoCommon.isEmpty) {
+            svoCommon = svCommon.isNotEmpty ? svCommon : oStories;
+          }
+
+          String storyId = svoCommon.isNotEmpty
+              ? svoCommon.first
+              : "${subjectId}_${verbId}_${objectId}";
+          String rawText =
+              userStoryTexts[storyId] ??
+              "$subjectLabel $verbLabel $objectLabel";
+
           fetchedStories.add(
             AnalyzedStory(
-              id: "${subjectId}_${verbId}_${objectId}",
-              rawText: "$subjectLabel $verbLabel $objectLabel",
+              id: storyId,
+              rawText: rawText,
               subject: subjectLabel,
               verb: verbLabel,
               object: objectLabel,

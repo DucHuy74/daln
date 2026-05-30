@@ -63,13 +63,13 @@ spring:
           issuer-uri: ${KEYCLOAK_ISSUER_URI}
 
   neo4j:
-    uri: bolt://127.0.0.1:7687
+    uri: ${NEO4J_URI}
     authentication:
-      username: neo4j
-      password: 12345678
+      username: ${NEO4J_USERNAME}
+      password: ${NEO4J_PASSWORD}
     data:
       neo4j:
-        database: neo4j
+        database: ${NEO4J_DATABASE}
 
   rabbitmq:
     host: localhost

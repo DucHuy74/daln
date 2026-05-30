@@ -674,7 +674,7 @@ class _SprintGraphScreenState extends State<SprintGraphScreen>
                   scaleEnabled: !_isLassoMode,
                   constrained: false,
                   boundaryMargin: const EdgeInsets.all(double.infinity),
-                  minScale: 0.1,
+                  minScale: 0.3,
                   maxScale: 10.0,
                   child: GestureDetector(
                     onPanStart: _isLassoMode ? _onLassoPanStart : null,

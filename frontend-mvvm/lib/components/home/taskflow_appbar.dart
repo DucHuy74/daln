@@ -21,6 +21,9 @@ class TaskFlowAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   // --- HÀM MỞ POPUP NOTIFICATION ---
   void _showNotificationMenu(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobileView = screenWidth < 800;
+
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -32,7 +35,7 @@ class TaskFlowAppBar extends StatelessWidget implements PreferredSizeWidget {
           children: [
             Positioned(
               top: 56.0,
-              right: 120.0,
+              right: isMobileView ? 8.0 : 120.0,
               child: NotificationPopup(
                 onClose: () => Navigator.of(context).pop(),
               ),

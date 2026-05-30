@@ -9,12 +9,14 @@ class GraphLinesPainter extends CustomPainter {
   final Map<String, Offset> nodePositions;
   final Set<String> edges;
   final Set<String> highlightedEdges;
+  final Set<String>? dimmedEdges;
   final GraphTheme theme;
 
   GraphLinesPainter({
     required this.nodePositions,
     required this.edges,
     required this.highlightedEdges,
+    this.dimmedEdges,
     required this.theme,
   });
 
@@ -35,11 +37,12 @@ class GraphLinesPainter extends CustomPainter {
       Offset toCenter = nodePositions[toKey]!;
 
       bool isHighlighted = highlightedEdges.contains(edge);
+      bool isDimmed = dimmedEdges?.contains(edge) ?? false;
 
       final paint = Paint()
         ..color = isHighlighted
             ? theme.highlightLine.withOpacity(0.9)
-            : theme.lineColor
+            : (isDimmed ? theme.lineColor.withOpacity(0.1) : theme.lineColor)
         ..strokeWidth = isHighlighted ? 2.5 : 1.0
         ..style = PaintingStyle.stroke;
 

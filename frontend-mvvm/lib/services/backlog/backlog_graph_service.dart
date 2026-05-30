@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../auth/auth_service.dart';
+import '../../mockdata/backlog/graph_dataset.dart';
 
 class GraphService {
   static const String _baseUrl = 'http://localhost:8080/api';
@@ -20,10 +21,7 @@ class GraphService {
     final useMock = dotenv.env['USE_MOCK'] == 'true';
     if (useMock) {
       await Future.delayed(const Duration(seconds: 1));
-      return {
-        'nodes': [],
-        'edges': []
-      };
+      return GraphDataset.mockWorkspaceGraph;
     }
 
     final query =

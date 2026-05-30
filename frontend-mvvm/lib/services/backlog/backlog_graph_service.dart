@@ -100,8 +100,14 @@ class GraphService {
       String workspaceId, String backlogId) async {
     try {
       final token = await AuthService.instance.getValidAccessToken();
-      final url = Uri.parse('$_baseUrl/user-stories/workspace/$workspaceId/backlog?backlogId=$backlogId');
-      
+      // Dùng backlogId làm query param nếu có (không rỗng)
+      final baseUrl = '$_baseUrl/user-stories/workspace/$workspaceId/backlog';
+      final url = backlogId.isNotEmpty
+          ? Uri.parse('$baseUrl?backlogId=$backlogId')
+          : Uri.parse(baseUrl);
+
+      print('DEBUG UserStories URL: $url');
+
       final response = await http.get(
         url,
         headers: {
@@ -110,10 +116,18 @@ class GraphService {
         },
       );
 
+      print('DEBUG UserStories Status: ${response.statusCode}');
+
       if (response.statusCode == 200) {
         final data = json.decode(utf8.decode(response.bodyBytes));
-        return data['result'] as List<dynamic>?;
+        final list = data['result'] as List<dynamic>?;
+        print('DEBUG UserStories Count: ${list?.length ?? 0}');
+        if (list != null && list.isNotEmpty) {
+          print('DEBUG First story ID: ${list.first['id']} | text: ${list.first['storyText']}');
+        }
+        return list;
       }
+      print('DEBUG UserStories Error body: ${response.body.substring(0, response.body.length.clamp(0, 200))}');
       return null;
     } catch (e) {
       print('REST Error: $e');

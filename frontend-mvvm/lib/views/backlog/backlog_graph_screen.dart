@@ -2,6 +2,7 @@
 import 'dart:math';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/backlog/graph_model.dart';
@@ -922,74 +923,264 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
   }
 
   void _showActionMenu(BuildContext context, AnalyzedStory story) {
+    final vm = context.read<GraphViewModel>();
+
+    // Debug: kiểm tra tại sao không tìm thấy story text
+    print('DEBUG story.id: ${story.id}');
+    print('DEBUG userStoryTexts size: ${vm.userStoryTexts.length}');
+    print('DEBUG found: ${vm.userStoryTexts.containsKey(story.id)}');
+
+    // Lấy câu story gốc từ REST API, fallback về rawText nếu không tìm thấy
+    final String fullStoryText = vm.userStoryTexts[story.id] ?? story.rawText;
+    final bool hasRealText = vm.userStoryTexts.containsKey(story.id);
+
+    // Tính priority từ cache hoặc story
+    final double? priority =
+        _nodeKeyPriorityCache['obj_${story.object}'] ??
+        _nodeKeyPriorityCache['sub_${story.subject}'] ??
+        story.objectPriority ??
+        story.subjectPriority;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: theme.panelBg,
+      isScrollControlled: true,
       shape: RoundedRectangleBorder(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         side: BorderSide(color: theme.panelBorder),
       ),
-      builder: (c) => Container(
-        height: 250,
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              story.rawText,
-              style: TextStyle(
-                color: theme.textPrimary,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
+      builder: (c) => DraggableScrollableSheet(
+        initialChildSize: 0.55,
+        minChildSize: 0.35,
+        maxChildSize: 0.85,
+        expand: false,
+        builder: (_, scrollCtrl) => SingleChildScrollView(
+          controller: scrollCtrl,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _statusChip(story.status),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    '${story.subject} → ${story.verb} → ${story.object}',
-                    style: TextStyle(color: theme.textSecondary, fontSize: 13),
-                    overflow: TextOverflow.ellipsis,
+                // Handle bar
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: theme.panelBorder,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
+
+                // Header: S-V-O chip + status
+                Row(
+                  children: [
+                    _statusChip(story.status),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        '${story.subject} → ${story.verb} → ${story.object}',
+                        style: TextStyle(
+                          color: theme.textSecondary,
+                          fontSize: 12,
+                          letterSpacing: 0.3,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Full story text
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: theme.verbBorder.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: theme.verbBorder.withOpacity(0.2),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.format_quote,
+                            size: 14,
+                            color: theme.verbBorder,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            hasRealText ? 'Story Text' : 'S-V-O Path',
+                            style: TextStyle(
+                              color: theme.verbBorder,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        fullStoryText,
+                        style: TextStyle(
+                          color: theme.textPrimary,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          height: 1.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Priority bar
+                if (priority != null) ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Priority',
+                        style: TextStyle(
+                          color: theme.textSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        '${(priority * 100).toStringAsFixed(1)}%',
+                        style: TextStyle(
+                          color: priority > 0.6
+                              ? Colors.greenAccent.shade400
+                              : priority > 0.3
+                              ? Colors.orangeAccent
+                              : theme.textSecondary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: priority.clamp(0.0, 1.0),
+                      minHeight: 6,
+                      backgroundColor: theme.panelBorder,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        priority > 0.6
+                            ? Colors.greenAccent.shade400
+                            : priority > 0.3
+                            ? Colors.orangeAccent
+                            : Colors.redAccent,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
+                // Story ID (copyable)
+                GestureDetector(
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: story.id));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('✓ Story ID copied to clipboard'),
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.panelBorder.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.fingerprint,
+                          size: 14,
+                          color: theme.textSecondary,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            story.id,
+                            style: TextStyle(
+                              color: theme.textSecondary,
+                              fontSize: 11,
+                              fontFamily: 'monospace',
+                              letterSpacing: 0.5,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Icon(Icons.copy, size: 13, color: theme.textSecondary),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Score info
+                if (story.performScore != null ||
+                    story.targetScore != null) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      if (story.performScore != null)
+                        _scoreChip(
+                          'Perform',
+                          story.performScore!,
+                          theme.subjectBorder,
+                        ),
+                      if (story.performScore != null &&
+                          story.targetScore != null)
+                        const SizedBox(width: 8),
+                      if (story.targetScore != null)
+                        _scoreChip(
+                          'Target',
+                          story.targetScore!,
+                          theme.verbBorder,
+                        ),
+                    ],
+                  ),
+                ],
               ],
             ),
-            const SizedBox(height: 12),
-            if (story.objectPriority != null)
-              Text(
-                'Priority: ${(story.objectPriority! * 100).toStringAsFixed(1)}%',
-                style: TextStyle(
-                  color: theme.subjectBorder,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            if (story.performScore != null || story.targetScore != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 4.0),
-                child: Text(
-                  'Score: ${story.performScore?.toStringAsFixed(2) ?? '-'} (Perform) / ${story.targetScore?.toStringAsFixed(2) ?? '-'} (Target)',
-                  style: TextStyle(color: theme.verbBorder, fontSize: 13),
-                ),
-              ),
-            if (story.performConfidence != null ||
-                story.targetConfidence != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 4.0),
-                child: Text(
-                  'Confidence: ${(story.performConfidence != null ? (story.performConfidence! * 100).toStringAsFixed(1) : '-')} % / ${(story.targetConfidence != null ? (story.targetConfidence! * 100).toStringAsFixed(1) : '-')} %',
-                  style: TextStyle(color: theme.textSecondary, fontSize: 13),
-                ),
-              ),
-            const SizedBox(height: 12),
-            Text(
-              'ID: ${story.id}',
-              style: TextStyle(color: theme.textSecondary, fontSize: 12),
-            ),
-          ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _scoreChip(String label, double score, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Text(
+        '$label: ${score.toStringAsFixed(2)}',
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

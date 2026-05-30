@@ -350,29 +350,33 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
                     onPanStart: _isLassoMode ? _onLassoPanStart : null,
                     onPanUpdate: _isLassoMode ? _onLassoPanUpdate : null,
                     onPanEnd: _isLassoMode ? _onLassoPanEnd : null,
-                    child: ValueListenableBuilder<Map<String, Offset>>(
-                      valueListenable: _positionsNotifier,
-                      builder: (context, positions, child) {
-                        return SizedBox(
-                          width: 2500,
-                          height: 5000,
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              AnimatedBuilder(
+                    child: SizedBox(
+                      width: 2500,
+                      height: 5000,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          ValueListenableBuilder<Map<String, Offset>>(
+                            valueListenable: _positionsNotifier,
+                            builder: (context, positions, child) {
+                              return AnimatedBuilder(
                                 animation: _spinController,
                                 builder: (_, __) => CustomPaint(
                                   size: const Size(2500, 5000),
                                   painter: GraphLinesPainter(
                                     nodePositions: positions,
                                     edges: edges,
-                                    highlightedEdges:
-                                        highlightedEdges, // Chuyền vào đây
+                                    highlightedEdges: highlightedEdges,
                                     theme: theme,
                                   ),
                                 ),
-                              ),
-                              CustomPaint(
+                              );
+                            },
+                          ),
+                          ValueListenableBuilder<Map<String, Offset>>(
+                            valueListenable: _positionsNotifier,
+                            builder: (context, positions, child) {
+                              return CustomPaint(
                                 size: const Size(2500, 5000),
                                 painter: ZoningPainter(
                                   nodePositions: positions,
@@ -383,20 +387,20 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
                                   makeObjectKey: _makeObjectKey,
                                   theme: theme,
                                 ),
-                              ),
-                              if (_isLassoMode && _drawnPoints.isNotEmpty)
-                                CustomPaint(
-                                  size: const Size(2500, 2500),
-                                  painter: LassoPainter(
-                                    drawnPoints: _drawnPoints,
-                                    theme: theme,
-                                  ),
-                                ),
-                              ..._buildNodeWidgets(vm.stories, positions),
-                            ],
+                              );
+                            },
                           ),
-                        );
-                      },
+                          if (_isLassoMode && _drawnPoints.isNotEmpty)
+                            CustomPaint(
+                              size: const Size(2500, 5000),
+                              painter: LassoPainter(
+                                drawnPoints: _drawnPoints,
+                                theme: theme,
+                              ),
+                            ),
+                          ..._buildNodeWidgets(vm.stories),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -443,7 +447,6 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
 
   List<Widget> _buildNodeWidgets(
     List<AnalyzedStory> stories,
-    Map<String, Offset> positions,
   ) {
     List<Widget> widgets = [];
     Set<String> renderedKeys = {};
@@ -458,7 +461,7 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
       }
     }
 
-    for (var key in positions.keys) {
+    for (var key in _positionsNotifier.value.keys) {
       if (renderedKeys.contains(key)) continue;
       renderedKeys.add(key);
 
@@ -471,7 +474,6 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
             NodeType.subject,
             null,
             stories,
-            positions[key]!,
           ),
         );
       } else if (key.startsWith("verb_")) {
@@ -484,7 +486,6 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
             NodeType.verb,
             repStory,
             stories,
-            positions[key]!,
           ),
         );
       } else if (key.startsWith("obj_")) {
@@ -497,7 +498,6 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
             NodeType.object,
             repStory,
             stories,
-            positions[key]!,
           ),
         );
       }
@@ -512,7 +512,6 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
     NodeType type,
     AnalyzedStory? story,
     List<AnalyzedStory> stories,
-    Offset pos,
   ) {
     double width = type == NodeType.verb ? 64 : 110;
     double height = type == NodeType.verb
@@ -525,9 +524,16 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
         ? _countStoriesForObject(text, stories)
         : 0;
 
-    return Positioned(
-      left: pos.dx - width / 2,
-      top: pos.dy - height / 2 - (type == NodeType.verb ? 12 : 0),
+    return ValueListenableBuilder<Map<String, Offset>>(
+      valueListenable: _positionsNotifier,
+      builder: (context, positions, child) {
+        final pos = positions[key] ?? Offset.zero;
+        return Positioned(
+          left: pos.dx - width / 2,
+          top: pos.dy - height / 2 - (type == NodeType.verb ? 12 : 0),
+          child: child!,
+        );
+      },
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -546,6 +552,7 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
                   final scenePoint = _transformationController.toScene(
                     localPos,
                   );
+                  final pos = _positionsNotifier.value[key] ?? Offset.zero;
                   // Lưu lại khoảng cách từ tâm node đến con trỏ chuột
                   _nodeDragOffset = pos - scenePoint;
                 }

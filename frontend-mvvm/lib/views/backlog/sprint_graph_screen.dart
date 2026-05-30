@@ -147,7 +147,9 @@ class _SprintGraphScreenState extends State<SprintGraphScreen>
   String? _errorMessage;
 
   List<SprintSvoStory> _stories = [];
-  final ValueNotifier<Map<String, Offset>> _positionsNotifier = ValueNotifier({});
+  final ValueNotifier<Map<String, Offset>> _positionsNotifier = ValueNotifier(
+    {},
+  );
   Set<String> edges = {};
 
   Set<String> expandedSubjects = {};
@@ -162,7 +164,8 @@ class _SprintGraphScreenState extends State<SprintGraphScreen>
   Offset? _nodeDragOffset;
 
   late AnimationController _spinController;
-  final TransformationController _transformationController = TransformationController();
+  final TransformationController _transformationController =
+      TransformationController();
 
   GraphTheme get theme => GraphTheme.of(context);
 
@@ -679,16 +682,16 @@ class _SprintGraphScreenState extends State<SprintGraphScreen>
                     onPanStart: _isLassoMode ? _onLassoPanStart : null,
                     onPanUpdate: _isLassoMode ? _onLassoPanUpdate : null,
                     onPanEnd: _isLassoMode ? _onLassoPanEnd : null,
-                    child: ValueListenableBuilder<Map<String, Offset>>(
-                      valueListenable: _positionsNotifier,
-                      builder: (context, positions, child) {
-                        return SizedBox(
-                          width: 2500,
-                          height: 5000,
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              AnimatedBuilder(
+                    child: SizedBox(
+                      width: 2500,
+                      height: 5000,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          ValueListenableBuilder<Map<String, Offset>>(
+                            valueListenable: _positionsNotifier,
+                            builder: (context, positions, child) {
+                              return AnimatedBuilder(
                                 animation: _spinController,
                                 builder: (_, __) => CustomPaint(
                                   size: const Size(2500, 5000),
@@ -699,8 +702,13 @@ class _SprintGraphScreenState extends State<SprintGraphScreen>
                                     theme: theme,
                                   ),
                                 ),
-                              ),
-                              CustomPaint(
+                              );
+                            },
+                          ),
+                          ValueListenableBuilder<Map<String, Offset>>(
+                            valueListenable: _positionsNotifier,
+                            builder: (context, positions, child) {
+                              return CustomPaint(
                                 size: const Size(2500, 5000),
                                 painter: ZoningPainter(
                                   nodePositions: positions,
@@ -711,20 +719,20 @@ class _SprintGraphScreenState extends State<SprintGraphScreen>
                                   makeObjectKey: _makeObjectKey,
                                   theme: theme,
                                 ),
-                              ),
-                              if (_isLassoMode && _drawnPoints.isNotEmpty)
-                                CustomPaint(
-                                  size: const Size(2500, 5000),
-                                  painter: LassoPainter(
-                                    drawnPoints: _drawnPoints,
-                                    theme: theme,
-                                  ),
-                                ),
-                              ..._buildNodeWidgets(positions),
-                            ],
+                              );
+                            },
                           ),
-                        );
-                      },
+                          if (_isLassoMode && _drawnPoints.isNotEmpty)
+                            CustomPaint(
+                              size: const Size(2500, 5000),
+                              painter: LassoPainter(
+                                drawnPoints: _drawnPoints,
+                                theme: theme,
+                              ),
+                            ),
+                          ..._buildNodeWidgets(_stories),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -741,7 +749,7 @@ class _SprintGraphScreenState extends State<SprintGraphScreen>
     );
   }
 
-  List<Widget> _buildNodeWidgets(Map<String, Offset> positions) {
+  List<Widget> _buildNodeWidgets(List<SprintSvoStory> stories) {
     List<Widget> widgets = [];
     Set<String> renderedKeys = {};
 
@@ -755,21 +763,21 @@ class _SprintGraphScreenState extends State<SprintGraphScreen>
       }
     }
 
-    for (var key in positions.keys) {
+    for (var key in _positionsNotifier.value.keys) {
       if (renderedKeys.contains(key)) continue;
       renderedKeys.add(key);
 
       if (key.startsWith("sub_")) {
         String name = key.replaceFirst("sub_", "");
-        widgets.add(_buildNode(key, name, NodeType.subject, null, positions[key]!));
+        widgets.add(_buildNode(key, name, NodeType.subject, null, stories));
       } else if (key.startsWith("verb_")) {
         String name = key.replaceFirst("verb_", "");
         SprintSvoStory? repStory = findRepresentativeStory(name, true);
-        widgets.add(_buildNode(key, name, NodeType.verb, repStory, positions[key]!));
+        widgets.add(_buildNode(key, name, NodeType.verb, repStory, stories));
       } else if (key.startsWith("obj_")) {
         String name = key.replaceFirst("obj_", "");
         SprintSvoStory? repStory = findRepresentativeStory(name, false);
-        widgets.add(_buildNode(key, name, NodeType.object, repStory, positions[key]!));
+        widgets.add(_buildNode(key, name, NodeType.object, repStory, stories));
       }
     }
 
@@ -781,7 +789,7 @@ class _SprintGraphScreenState extends State<SprintGraphScreen>
     String text,
     NodeType type,
     SprintSvoStory? story,
-    Offset pos,
+    List<SprintSvoStory> stories,
   ) {
     double width = type == NodeType.verb ? 64 : 110;
     double height = type == NodeType.verb
@@ -791,12 +799,19 @@ class _SprintGraphScreenState extends State<SprintGraphScreen>
     bool isHovered = _hoveredNodeKey == key;
     bool isSelected = _selectedNodeKeys.contains(key);
     int storyCount = type == NodeType.object
-        ? _stories.where((s) => s.object == text).length
+        ? stories.where((s) => s.object == text).length
         : 0;
 
-    return Positioned(
-      left: pos.dx - width / 2,
-      top: pos.dy - height / 2 - (type == NodeType.verb ? 12 : 0),
+    return ValueListenableBuilder<Map<String, Offset>>(
+      valueListenable: _positionsNotifier,
+      builder: (context, positions, child) {
+        final pos = positions[key] ?? Offset.zero;
+        return Positioned(
+          left: pos.dx - width / 2,
+          top: pos.dy - height / 2 - (type == NodeType.verb ? 12 : 0),
+          child: child!,
+        );
+      },
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -809,17 +824,26 @@ class _SprintGraphScreenState extends State<SprintGraphScreen>
             child: GestureDetector(
               onPanStart: (d) {
                 if (!_isZoningMode && !_isLassoMode) {
-                  final RenderBox renderBox = context.findRenderObject() as RenderBox;
+                  final RenderBox renderBox =
+                      context.findRenderObject() as RenderBox;
                   final localPos = renderBox.globalToLocal(d.globalPosition);
-                  final scenePoint = _transformationController.toScene(localPos);
+                  final scenePoint = _transformationController.toScene(
+                    localPos,
+                  );
+                  final pos = _positionsNotifier.value[key] ?? Offset.zero;
                   _nodeDragOffset = pos - scenePoint;
                 }
               },
               onPanUpdate: (d) {
-                if (!_isZoningMode && !_isLassoMode && _nodeDragOffset != null) {
-                  final RenderBox renderBox = context.findRenderObject() as RenderBox;
+                if (!_isZoningMode &&
+                    !_isLassoMode &&
+                    _nodeDragOffset != null) {
+                  final RenderBox renderBox =
+                      context.findRenderObject() as RenderBox;
                   final localPos = renderBox.globalToLocal(d.globalPosition);
-                  final scenePoint = _transformationController.toScene(localPos);
+                  final scenePoint = _transformationController.toScene(
+                    localPos,
+                  );
                   _avoidCollision(key, scenePoint + _nodeDragOffset!);
                 }
               },

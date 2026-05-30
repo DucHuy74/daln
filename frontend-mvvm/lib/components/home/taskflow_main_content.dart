@@ -67,20 +67,20 @@ class TaskFlowMainContent extends StatelessWidget {
             ),
             const SizedBox(height: 32),
             Text(
-              'Space not found',
+              'Welcome to TaskFlow',
               style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.w600,
-                color: titleColor, // Đổi màu tiêu đề
+                color: titleColor,
               ),
             ),
             const SizedBox(height: 16),
             Text(
-              'You tried to access a space that doesn\'t exist, or that you don\'t have permission to access. Speak to your TaskFlow admin or space admin to get access.',
+              'Select a workspace from the sidebar to view its backlog and graph, or create a new one to get started.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 16,
-                color: subtitleColor, // Đổi màu nội dung chữ
+                color: subtitleColor,
                 height: 1.5,
               ),
             ),

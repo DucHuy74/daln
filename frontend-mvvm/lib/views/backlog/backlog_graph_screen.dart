@@ -98,6 +98,45 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
   List<Offset> _drawnPoints = [];
   Set<String> _selectedNodeKeys = {};
 
+  // --- FILTER STATE ---
+  double _priorityFilter = 0.0;
+  bool _showFilterSlider = false;
+
+  Set<String> get _dimmedNodeKeys {
+    if (_priorityFilter <= 0.0) return {};
+    Set<String> dimmed = {};
+    final vm = context.read<GraphViewModel>();
+    for (var s in vm.stories) {
+      if ((s.subjectPriority ?? 0.0) < _priorityFilter)
+        dimmed.add("sub_${s.subject}");
+      if ((s.verbPriority ?? 0.0) < _priorityFilter)
+        dimmed.add("verb_${s.verb}");
+      if ((s.objectPriority ?? 0.0) < _priorityFilter) {
+        dimmed.add(
+          _isObjectASubject(s.object, vm.stories)
+              ? "sub_${s.object}"
+              : _makeObjectKey(s.object),
+        );
+      }
+    }
+    return dimmed;
+  }
+
+  Set<String> get _dimmedEdges {
+    if (_priorityFilter <= 0.0) return {};
+    Set<String> dimmedE = {};
+    final dimmedN = _dimmedNodeKeys;
+    for (var edge in edges) {
+      final parts = edge.split('|');
+      if (parts.length == 2) {
+        if (dimmedN.contains(parts[0]) || dimmedN.contains(parts[1])) {
+          dimmedE.add(edge);
+        }
+      }
+    }
+    return dimmedE;
+  }
+
   Offset? _nodeDragOffset;
 
   late AnimationController _spinController;
@@ -367,6 +406,7 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
                                     nodePositions: positions,
                                     edges: edges,
                                     highlightedEdges: highlightedEdges,
+                                    dimmedEdges: _dimmedEdges,
                                     theme: theme,
                                   ),
                                 ),
@@ -440,14 +480,14 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
                       ),
                     ),
                   ),
+                if (_showFilterSlider)
+                  Positioned(right: 80, bottom: 32, child: _buildFilterPanel()),
               ],
             ),
     );
   }
 
-  List<Widget> _buildNodeWidgets(
-    List<AnalyzedStory> stories,
-  ) {
+  List<Widget> _buildNodeWidgets(List<AnalyzedStory> stories) {
     List<Widget> widgets = [];
     Set<String> renderedKeys = {};
 
@@ -467,39 +507,15 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
 
       if (key.startsWith("sub_")) {
         String name = key.replaceFirst("sub_", "");
-        widgets.add(
-          _buildNode(
-            key,
-            name,
-            NodeType.subject,
-            null,
-            stories,
-          ),
-        );
+        widgets.add(_buildNode(key, name, NodeType.subject, null, stories));
       } else if (key.startsWith("verb_")) {
         String name = key.replaceFirst("verb_", "");
         AnalyzedStory? repStory = findRepresentativeStory(name, true);
-        widgets.add(
-          _buildNode(
-            key,
-            name,
-            NodeType.verb,
-            repStory,
-            stories,
-          ),
-        );
+        widgets.add(_buildNode(key, name, NodeType.verb, repStory, stories));
       } else if (key.startsWith("obj_")) {
         String name = key.replaceFirst("obj_", "");
         AnalyzedStory? repStory = findRepresentativeStory(name, false);
-        widgets.add(
-          _buildNode(
-            key,
-            name,
-            NodeType.object,
-            repStory,
-            stories,
-          ),
-        );
+        widgets.add(_buildNode(key, name, NodeType.object, repStory, stories));
       }
     }
 
@@ -523,6 +539,8 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
     int storyCount = type == NodeType.object
         ? _countStoriesForObject(text, stories)
         : 0;
+
+    bool isDimmed = _dimmedNodeKeys.contains(key);
 
     return ValueListenableBuilder<Map<String, Offset>>(
       valueListenable: _positionsNotifier,
@@ -588,48 +606,51 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
                   _handleTap(key, text, type, story, stories);
                 }
               },
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  type == NodeType.subject
-                      ? GraphNodeWidgets.buildSubjectNode(
-                          text,
-                          width,
-                          height,
-                          isHovered,
-                          isSelected,
-                          theme,
-                        )
-                      : type == NodeType.verb
-                      ? GraphNodeWidgets.buildVerbNode(
-                          text,
-                          width,
-                          height,
-                          isHovered,
-                          isSelected,
-                          theme,
-                          _spinController,
-                        )
-                      : GraphNodeWidgets.buildObjectNode(
-                          text,
-                          story,
-                          width,
-                          height,
-                          isHovered,
-                          isSelected,
-                          theme,
+              child: Opacity(
+                opacity: isDimmed ? 0.15 : 1.0,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    type == NodeType.subject
+                        ? GraphNodeWidgets.buildSubjectNode(
+                            text,
+                            width,
+                            height,
+                            isHovered,
+                            isSelected,
+                            theme,
+                          )
+                        : type == NodeType.verb
+                        ? GraphNodeWidgets.buildVerbNode(
+                            text,
+                            width,
+                            height,
+                            isHovered,
+                            isSelected,
+                            theme,
+                            _spinController,
+                          )
+                        : GraphNodeWidgets.buildObjectNode(
+                            text,
+                            story,
+                            width,
+                            height,
+                            isHovered,
+                            isSelected,
+                            theme,
+                          ),
+                    if (isHovered && type == NodeType.object)
+                      Positioned(
+                        left: width + 8,
+                        top: 0,
+                        child: NodeTooltip(
+                          objectName: text,
+                          count: storyCount,
+                          theme: theme,
                         ),
-                  if (isHovered && type == NodeType.object)
-                    Positioned(
-                      left: width + 8,
-                      top: 0,
-                      child: NodeTooltip(
-                        objectName: text,
-                        count: storyCount,
-                        theme: theme,
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -676,6 +697,8 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
       });
     } else if (type == NodeType.object && story != null) {
       _showActionMenu(context, story);
+    } else if (type == NodeType.verb && story != null) {
+      _showActionMenu(context, story);
     }
   }
 
@@ -716,6 +739,14 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
         ),
         const SizedBox(height: 10),
         _fabButton(
+          heroTag: "filter",
+          icon: Icons.filter_alt,
+          active: _showFilterSlider,
+          onPressed: () =>
+              setState(() => _showFilterSlider = !_showFilterSlider),
+        ),
+        const SizedBox(height: 10),
+        _fabButton(
           heroTag: "r",
           icon: Icons.refresh,
           onPressed: () async {
@@ -740,13 +771,11 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
                 await Future.delayed(const Duration(seconds: 3));
 
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('Cập nhật đồ thị thành công!'),
-                      backgroundColor: theme.doneColor,
-                    ),
+                  context.read<GraphViewModel>().fetchGraphData(
+                    widget.workspaceId,
+                    widget.backlogId,
+                    source: 'BATCH', // Gọi API batch để lấy kết quả
                   );
-                  _loadData(source: 'BATCH');
                 }
               }
             } else {
@@ -762,6 +791,51 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
           },
         ),
       ],
+    );
+  }
+
+  Widget _buildFilterPanel() {
+    return Container(
+      width: 280,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: theme.panelBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.panelBorder),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Filter by Priority (Hide < ${_priorityFilter.toStringAsFixed(2)})',
+            style: TextStyle(
+              color: theme.textPrimary,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Slider(
+            value: _priorityFilter,
+            min: 0.0,
+            max: 1.0,
+            activeColor: theme.verbBorder,
+            inactiveColor: theme.panelBorder,
+            onChanged: (v) {
+              setState(() {
+                _priorityFilter = v;
+              });
+            },
+          ),
+        ],
+      ),
     );
   }
 

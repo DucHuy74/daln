@@ -10,13 +10,21 @@ class GraphViewModel extends ChangeNotifier {
   String? errorMessage;
   List<AnalyzedStory> stories = [];
 
-  Future<void> fetchGraphData(String workspaceId, String backlogId, {String source = 'REALTIME'}) async {
+  Future<void> fetchGraphData(
+    String workspaceId,
+    String backlogId, {
+    String source = 'REALTIME',
+  }) async {
     isLoading = true;
     errorMessage = null;
     notifyListeners();
 
     try {
-      final data = await _service.getBacklogGraph(workspaceId, backlogId, source: source);
+      final data = await _service.getBacklogGraph(
+        workspaceId,
+        backlogId,
+        source: source,
+      );
       if (data != null) {
         _parseGraphToStories(data);
       } else {
@@ -45,6 +53,45 @@ class GraphViewModel extends ChangeNotifier {
       }
     }
 
+    // Lấy priority từ các USER_STORY nodes truyền xuống cho TERM nodes qua liên kết RELATES_TO
+    Map<String, double> nodeMaxPriority = {};
+    var relatesEdges = edges.where((e) {
+      String type = e['type']?.toString().toUpperCase() ?? '';
+      return type == 'RELATES_TO' ||
+          type == 'RELATED_TO' ||
+          type == 'SIMILAR' ||
+          type == 'CONTAINS' ||
+          type == 'HAS' ||
+          type == 'HAS_SUBJECT' ||
+          type == 'HAS_VERB' ||
+          type == 'HAS_OBJECT';
+    });
+
+    for (var edge in relatesEdges) {
+      String fromId = edge['from']?.toString() ?? '';
+      String toId = edge['to']?.toString() ?? '';
+
+      // Kiểm tra cả 2 chiều (Story -> Term hoặc Term -> Story)
+      double? storyPriorityFrom = (nodeIdToNode[fromId]?['priority'] as num?)
+          ?.toDouble();
+      double? storyPriorityTo = (nodeIdToNode[toId]?['priority'] as num?)
+          ?.toDouble();
+
+      if (storyPriorityFrom != null &&
+          nodeIdToNode[fromId]?['type'] == 'USER_STORY') {
+        double currentMax = nodeMaxPriority[toId] ?? 0.0;
+        if (storyPriorityFrom > currentMax) {
+          nodeMaxPriority[toId] = storyPriorityFrom;
+        }
+      } else if (storyPriorityTo != null &&
+          nodeIdToNode[toId]?['type'] == 'USER_STORY') {
+        double currentMax = nodeMaxPriority[fromId] ?? 0.0;
+        if (storyPriorityTo > currentMax) {
+          nodeMaxPriority[fromId] = storyPriorityTo;
+        }
+      }
+    }
+
     // Find all PERFORM edges (Subject -> Verb)
     var performEdges = edges.where((e) => e['type'] == 'PERFORM');
 
@@ -54,57 +101,73 @@ class GraphViewModel extends ChangeNotifier {
 
       if (subjectId.isEmpty || verbId.isEmpty) continue;
 
-      String subjectLabel = nodeIdToNode[subjectId]?['label']?.toString() ?? subjectId;
+      String subjectLabel =
+          nodeIdToNode[subjectId]?['label']?.toString() ?? subjectId;
       String verbLabel = nodeIdToNode[verbId]?['label']?.toString() ?? verbId;
-      
-      double? subjectPriority = (nodeIdToNode[subjectId]?['priority'] as num?)?.toDouble();
-      double? verbPriority = (nodeIdToNode[verbId]?['priority'] as num?)?.toDouble();
-      
+
+      double? subjectPriority =
+          nodeMaxPriority[subjectId] ??
+          (nodeIdToNode[subjectId]?['priority'] as num?)?.toDouble();
+      double? verbPriority =
+          nodeMaxPriority[verbId] ??
+          (nodeIdToNode[verbId]?['priority'] as num?)?.toDouble();
+
       double? performScore = (performEdge['score'] as num?)?.toDouble();
-      double? performConfidence = (performEdge['confidence'] as num?)?.toDouble();
+      double? performConfidence = (performEdge['confidence'] as num?)
+          ?.toDouble();
 
       // Find all TARGET edges starting from this verb (Verb -> Object)
-      var targetEdges = edges.where((e) => e['type'] == 'TARGET' && e['from']?.toString() == verbId);
+      var targetEdges = edges.where(
+        (e) => e['type'] == 'TARGET' && e['from']?.toString() == verbId,
+      );
 
       if (targetEdges.isEmpty) {
-        fetchedStories.add(AnalyzedStory(
-          id: "${subjectId}_${verbId}",
-          rawText: "$subjectLabel $verbLabel",
-          subject: subjectLabel,
-          verb: verbLabel,
-          object: "Unknown",
-          status: USStatus.todo,
-          subjectPriority: subjectPriority,
-          verbPriority: verbPriority,
-          performScore: performScore,
-          performConfidence: performConfidence,
-        ));
+        fetchedStories.add(
+          AnalyzedStory(
+            id: "${subjectId}_${verbId}",
+            rawText: "$subjectLabel $verbLabel",
+            subject: subjectLabel,
+            verb: verbLabel,
+            object: "Unknown",
+            status: USStatus.todo,
+            subjectPriority: subjectPriority,
+            verbPriority: verbPriority,
+            performScore: performScore,
+            performConfidence: performConfidence,
+          ),
+        );
       } else {
         for (var targetEdge in targetEdges) {
           String objectId = targetEdge['to']?.toString() ?? '';
           if (objectId.isEmpty) continue;
-          
-          String objectLabel = nodeIdToNode[objectId]?['label']?.toString() ?? objectId;
-          double? objectPriority = (nodeIdToNode[objectId]?['priority'] as num?)?.toDouble();
-          
-          double? targetScore = (targetEdge['score'] as num?)?.toDouble();
-          double? targetConfidence = (targetEdge['confidence'] as num?)?.toDouble();
 
-          fetchedStories.add(AnalyzedStory(
-            id: "${subjectId}_${verbId}_${objectId}",
-            rawText: "$subjectLabel $verbLabel $objectLabel",
-            subject: subjectLabel,
-            verb: verbLabel,
-            object: objectLabel,
-            status: USStatus.todo,
-            subjectPriority: subjectPriority,
-            verbPriority: verbPriority,
-            objectPriority: objectPriority,
-            performScore: performScore,
-            performConfidence: performConfidence,
-            targetScore: targetScore,
-            targetConfidence: targetConfidence,
-          ));
+          String objectLabel =
+              nodeIdToNode[objectId]?['label']?.toString() ?? objectId;
+          double? objectPriority =
+              nodeMaxPriority[objectId] ??
+              (nodeIdToNode[objectId]?['priority'] as num?)?.toDouble();
+
+          double? targetScore = (targetEdge['score'] as num?)?.toDouble();
+          double? targetConfidence = (targetEdge['confidence'] as num?)
+              ?.toDouble();
+
+          fetchedStories.add(
+            AnalyzedStory(
+              id: "${subjectId}_${verbId}_${objectId}",
+              rawText: "$subjectLabel $verbLabel $objectLabel",
+              subject: subjectLabel,
+              verb: verbLabel,
+              object: objectLabel,
+              status: USStatus.todo,
+              subjectPriority: subjectPriority,
+              verbPriority: verbPriority,
+              objectPriority: objectPriority,
+              performScore: performScore,
+              performConfidence: performConfidence,
+              targetScore: targetScore,
+              targetConfidence: targetConfidence,
+            ),
+          );
         }
       }
     }

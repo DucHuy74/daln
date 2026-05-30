@@ -169,6 +169,9 @@ class _SprintGraphScreenState extends State<SprintGraphScreen>
   @override
   void initState() {
     super.initState();
+    // Di chuyển camera tới tọa độ trung tâm (5000, 5000) ngay khi mở màn hình
+    _transformationController.value = Matrix4.identity()..translate(-5000.0, -5000.0);
+
     _spinController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
@@ -263,11 +266,11 @@ class _SprintGraphScreenState extends State<SprintGraphScreen>
     edges.clear();
 
     List<String> subjects = _getUniqueSubjects(stories);
-    const double subjectX = 150;
-    const double verbX = 420;
-    const double objectX = 720;
+    const double subjectX = 5150;
+    const double verbX = 5420;
+    const double objectX = 5720;
 
-    double currentSubjectY = 140;
+    double currentSubjectY = 5140;
     const double spacing = 120;
 
     for (var subName in subjects) {
@@ -297,13 +300,13 @@ class _SprintGraphScreenState extends State<SprintGraphScreen>
       edges.add("$verbKey|$targetKey");
     }
 
-    double currentVerbY = 140;
+    double currentVerbY = 5140;
     for (var verbKey in uniqueVerbs) {
       newPositions[verbKey] = Offset(verbX, currentVerbY);
       currentVerbY += spacing;
     }
 
-    double currentObjY = 140;
+    double currentObjY = 5140;
     for (var objKey in uniqueObjects) {
       newPositions[objKey] = Offset(objectX, currentObjY);
       currentObjY += spacing;
@@ -670,9 +673,9 @@ class _SprintGraphScreenState extends State<SprintGraphScreen>
                   panEnabled: !_isLassoMode,
                   scaleEnabled: !_isLassoMode,
                   constrained: false,
-                  boundaryMargin: const EdgeInsets.all(2000),
+                  boundaryMargin: const EdgeInsets.all(double.infinity),
                   minScale: 0.1,
-                  maxScale: 4.0,
+                  maxScale: 10.0,
                   child: GestureDetector(
                     onPanStart: _isLassoMode ? _onLassoPanStart : null,
                     onPanUpdate: _isLassoMode ? _onLassoPanUpdate : null,
@@ -681,14 +684,15 @@ class _SprintGraphScreenState extends State<SprintGraphScreen>
                       valueListenable: _positionsNotifier,
                       builder: (context, positions, child) {
                         return SizedBox(
-                          width: 2500,
-                          height: 2500,
+                          width: 10000,
+                          height: 10000,
                           child: Stack(
+                            clipBehavior: Clip.none,
                             children: [
                               AnimatedBuilder(
                                 animation: _spinController,
                                 builder: (_, __) => CustomPaint(
-                                  size: const Size(2500, 2500),
+                                  size: const Size(10000, 10000),
                                   painter: GraphLinesPainter(
                                     nodePositions: positions,
                                     edges: edges,
@@ -698,7 +702,7 @@ class _SprintGraphScreenState extends State<SprintGraphScreen>
                                 ),
                               ),
                               CustomPaint(
-                                size: const Size(2500, 2500),
+                                size: const Size(10000, 10000),
                                 painter: ZoningPainter(
                                   nodePositions: positions,
                                   zonedSubjects: zonedSubjects,
@@ -711,7 +715,7 @@ class _SprintGraphScreenState extends State<SprintGraphScreen>
                               ),
                               if (_isLassoMode && _drawnPoints.isNotEmpty)
                                 CustomPaint(
-                                  size: const Size(2500, 2500),
+                                  size: const Size(10000, 10000),
                                   painter: LassoPainter(
                                     drawnPoints: _drawnPoints,
                                     theme: theme,

@@ -127,29 +127,23 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
           ? 'sub_${s.object}'
           : _makeObjectKey(s.object);
 
-      // Dùng termPriorities trước, rồi mới fallback về story-level priority
-      double? subPri = termPriorities[s.subject] ?? s.subjectPriority;
-      double? verbPri = termPriorities[s.verb] ?? s.verbPriority;
-      double? objPri = termPriorities[s.object] ?? s.objectPriority;
+      // Dùng termPriorities trước, rồi mới fallback về story-level priority, mặc định 0.0 nếu null
+      double subPri = termPriorities[s.subject] ?? s.subjectPriority ?? 0.0;
+      double verbPri = termPriorities[s.verb] ?? s.verbPriority ?? 0.0;
+      double objPri = termPriorities[s.object] ?? s.objectPriority ?? 0.0;
 
-      if (subPri != null) {
-        _nodeKeyPriorityCache[subKey] = max(
-          _nodeKeyPriorityCache[subKey] ?? 0.0,
-          subPri,
-        );
-      }
-      if (verbPri != null) {
-        _nodeKeyPriorityCache[verbKey] = max(
-          _nodeKeyPriorityCache[verbKey] ?? 0.0,
-          verbPri,
-        );
-      }
-      if (objPri != null) {
-        _nodeKeyPriorityCache[objKey] = max(
-          _nodeKeyPriorityCache[objKey] ?? 0.0,
-          objPri,
-        );
-      }
+      _nodeKeyPriorityCache[subKey] = max(
+        _nodeKeyPriorityCache[subKey] ?? 0.0,
+        subPri,
+      );
+      _nodeKeyPriorityCache[verbKey] = max(
+        _nodeKeyPriorityCache[verbKey] ?? 0.0,
+        verbPri,
+      );
+      _nodeKeyPriorityCache[objKey] = max(
+        _nodeKeyPriorityCache[objKey] ?? 0.0,
+        objPri,
+      );
     }
   }
 
@@ -559,6 +553,7 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
 
     for (var key in _positionsNotifier.value.keys) {
       if (renderedKeys.contains(key)) continue;
+
       renderedKeys.add(key);
 
       if (key.startsWith("sub_")) {
@@ -592,6 +587,18 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
 
     bool isHovered = _hoveredNodeKey == key;
     bool isSelected = _selectedNodeKeys.contains(key);
+
+    bool isActive = true;
+    if (_hoveredNodeKey != null) {
+      if (_hoveredNodeKey == key) {
+        isActive = true;
+      } else {
+        isActive =
+            edges.contains("$key|$_hoveredNodeKey") ||
+            edges.contains("$_hoveredNodeKey|$key");
+      }
+    }
+
     int storyCount = type == NodeType.object
         ? _countStoriesForObject(text, stories)
         : 0;
@@ -657,58 +664,61 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
                   _handleTap(key, text, type, story, stories);
                 }
               },
-              // Dùng ValueListenableBuilder chỉ update opacity, không rebuild toàn bộ node
+              // ValueListenableBuilder giúp ẩn hiện node lập tức khi kéo slider không cần setState
               child: ValueListenableBuilder<Set<String>>(
                 valueListenable: _dimmedNodeKeysNotifier,
-                builder: (ctx, dimmedKeys, nodeChild) {
+                builder: (context, dimmedKeys, _) {
+                  if (dimmedKeys.contains(key)) {
+                    return const SizedBox.shrink(); // Ẩn hoàn toàn node
+                  }
+
                   return Opacity(
-                    opacity: dimmedKeys.contains(key) ? 0.15 : 1.0,
-                    child: nodeChild,
+                    opacity: isActive ? 1.0 : 0.2,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        type == NodeType.subject
+                            ? GraphNodeWidgets.buildSubjectNode(
+                                text,
+                                width,
+                                height,
+                                isHovered,
+                                isSelected,
+                                theme,
+                              )
+                            : type == NodeType.verb
+                            ? GraphNodeWidgets.buildVerbNode(
+                                text,
+                                width,
+                                height,
+                                isHovered,
+                                isSelected,
+                                theme,
+                                _spinController,
+                              )
+                            : GraphNodeWidgets.buildObjectNode(
+                                text,
+                                story,
+                                width,
+                                height,
+                                isHovered,
+                                isSelected,
+                                theme,
+                              ),
+                        if (isHovered && type == NodeType.object)
+                          Positioned(
+                            left: width + 8,
+                            top: 0,
+                            child: NodeTooltip(
+                              objectName: text,
+                              count: storyCount,
+                              theme: theme,
+                            ),
+                          ),
+                      ],
+                    ),
                   );
                 },
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    type == NodeType.subject
-                        ? GraphNodeWidgets.buildSubjectNode(
-                            text,
-                            width,
-                            height,
-                            isHovered,
-                            isSelected,
-                            theme,
-                          )
-                        : type == NodeType.verb
-                        ? GraphNodeWidgets.buildVerbNode(
-                            text,
-                            width,
-                            height,
-                            isHovered,
-                            isSelected,
-                            theme,
-                            _spinController,
-                          )
-                        : GraphNodeWidgets.buildObjectNode(
-                            text,
-                            story,
-                            width,
-                            height,
-                            isHovered,
-                            isSelected,
-                            theme,
-                          ),
-                    if (isHovered && type == NodeType.object)
-                      Positioned(
-                        left: width + 8,
-                        top: 0,
-                        child: NodeTooltip(
-                          objectName: text,
-                          count: storyCount,
-                          theme: theme,
-                        ),
-                      ),
-                  ],
-                ),
               ),
             ),
           ),
@@ -923,18 +933,36 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
     );
   }
 
+  Widget _buildDetailRow(String label, String value, GraphTheme theme) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 60,
+          child: Text(
+            label,
+            style: TextStyle(
+              color: theme.textSecondary,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: TextStyle(
+              color: theme.textPrimary,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   void _showActionMenu(BuildContext context, AnalyzedStory story) {
-    final vm = context.read<GraphViewModel>();
-
-    // Debug: kiểm tra tại sao không tìm thấy story text
-    print('DEBUG story.id: ${story.id}');
-    print('DEBUG userStoryTexts size: ${vm.userStoryTexts.length}');
-    print('DEBUG found: ${vm.userStoryTexts.containsKey(story.id)}');
-
-    // Lấy câu story gốc từ REST API, fallback về rawText nếu không tìm thấy
-    final String fullStoryText = vm.userStoryTexts[story.id] ?? story.rawText;
-    final bool hasRealText = vm.userStoryTexts.containsKey(story.id);
-
     // Tính priority từ cache hoặc story
     final double? priority =
         _nodeKeyPriorityCache['obj_${story.object}'] ??
@@ -995,7 +1023,7 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
                 ),
                 const SizedBox(height: 16),
 
-                // Full story text
+                // Simple ID / Type / Priority display
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
@@ -1012,87 +1040,34 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
                       Row(
                         children: [
                           Icon(
-                            Icons.format_quote,
-                            size: 14,
+                            Icons.info_outline,
+                            size: 16,
                             color: theme.verbBorder,
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            hasRealText ? 'Story Text' : 'S-V-O Path',
+                            'Node Details',
                             style: TextStyle(
                               color: theme.verbBorder,
-                              fontSize: 11,
+                              fontSize: 12,
                               fontWeight: FontWeight.w600,
                               letterSpacing: 0.5,
                             ),
                           ),
                         ],
                       ),
+                      const SizedBox(height: 12),
+                      _buildDetailRow('ID', story.id, theme),
                       const SizedBox(height: 8),
-                      if (hasRealText)
-                        Text(
-                          fullStoryText,
-                          style: TextStyle(
-                            color: theme.textPrimary,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                            height: 1.5,
-                          ),
-                        )
-                      else
-                        FutureBuilder<Map<String, dynamic>?>(
-                          future: UserStoryService().getUserStoryById(story.id),
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 8.0,
-                                ),
-                                child: Row(
-                                  children: [
-                                    SizedBox(
-                                      width: 16,
-                                      height: 16,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: theme.verbBorder,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Text(
-                                      'Loading full story text...',
-                                      style: TextStyle(
-                                        color: theme.textSecondary,
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }
-
-                            String displayText = fullStoryText;
-                            if (snapshot.hasData &&
-                                snapshot.data!['storyText'] != null) {
-                              displayText = snapshot.data!['storyText'];
-                              // Cache lại để lần sau mở sẽ không phải load lại
-                              WidgetsBinding.instance.addPostFrameCallback((_) {
-                                vm.userStoryTexts[story.id] = displayText;
-                              });
-                            }
-
-                            return Text(
-                              displayText,
-                              style: TextStyle(
-                                color: theme.textPrimary,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w500,
-                                height: 1.5,
-                              ),
-                            );
-                          },
-                        ),
+                      _buildDetailRow('Type', 'S-V-O Path Node', theme),
+                      const SizedBox(height: 8),
+                      _buildDetailRow(
+                        'Priority',
+                        priority != null
+                            ? '${(priority * 100).toStringAsFixed(2)}%'
+                            : 'N/A',
+                        theme,
+                      ),
                     ],
                   ),
                 ),
@@ -1100,32 +1075,6 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
 
                 // Priority bar
                 if (priority != null) ...[
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Priority',
-                        style: TextStyle(
-                          color: theme.textSecondary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        '${(priority * 100).toStringAsFixed(1)}%',
-                        style: TextStyle(
-                          color: priority > 0.6
-                              ? Colors.greenAccent.shade400
-                              : priority > 0.3
-                              ? Colors.orangeAccent
-                              : theme.textSecondary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(4),
                     child: LinearProgressIndicator(

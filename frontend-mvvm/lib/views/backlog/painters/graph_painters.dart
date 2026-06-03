@@ -38,11 +38,14 @@ class GraphLinesPainter extends CustomPainter {
 
       bool isHighlighted = highlightedEdges.contains(edge);
       bool isDimmed = dimmedEdges?.contains(edge) ?? false;
+      
+      // Nếu cạnh bị mờ (do filter), ta ẨN hoàn toàn (không vẽ)
+      if (isDimmed) continue;
 
       final paint = Paint()
         ..color = isHighlighted
             ? theme.highlightLine.withOpacity(0.9)
-            : (isDimmed ? theme.lineColor.withOpacity(0.1) : theme.lineColor)
+            : theme.lineColor
         ..strokeWidth = isHighlighted ? 2.5 : 1.0
         ..style = PaintingStyle.stroke;
 

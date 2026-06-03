@@ -21,10 +21,14 @@ class SummaryView extends StatelessWidget {
     final totalStories = viewModel.backlogList.length;
 
     // Tính toán số lượng stories theo trạng thái (chỉ lấy trong backlog list)
-    final doneStories = viewModel.backlogList.where((s) => s.status.toLowerCase() == 'done').length;
-    final inProgressStories = viewModel.backlogList.where((s) => s.status.toLowerCase() == 'in progress').length;
+    final doneStories = viewModel.backlogList
+        .where((s) => s.status.toLowerCase() == 'done')
+        .length;
+    final inProgressStories = viewModel.backlogList
+        .where((s) => s.status.toLowerCase() == 'in progress')
+        .length;
     final todoStories = totalStories - doneStories - inProgressStories;
-    
+
     double progress = totalStories == 0 ? 0 : doneStories / totalStories;
 
     return SingleChildScrollView(
@@ -42,7 +46,11 @@ class SummaryView extends StatelessWidget {
                   color: const Color(0xFF0052CC),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.analytics_outlined, color: Colors.white, size: 28),
+                child: const Icon(
+                  Icons.analytics_outlined,
+                  color: Colors.white,
+                  size: 28,
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -92,7 +100,7 @@ class SummaryView extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     _buildStatCard(
-                      title: "Total Backlog",
+                      title: "Total Userstories",
                       value: totalStories.toString(),
                       icon: Icons.list_alt,
                       color: Colors.blue,
@@ -102,26 +110,32 @@ class SummaryView extends StatelessWidget {
               }
               return Row(
                 children: [
-                  Expanded(child: _buildStatCard(
-                    title: "Total Sprints",
-                    value: totalSprints.toString(),
-                    icon: Icons.run_circle_outlined,
-                    color: Colors.purple,
-                  )),
+                  Expanded(
+                    child: _buildStatCard(
+                      title: "Total Sprints",
+                      value: totalSprints.toString(),
+                      icon: Icons.run_circle_outlined,
+                      color: Colors.purple,
+                    ),
+                  ),
                   const SizedBox(width: 24),
-                  Expanded(child: _buildStatCard(
-                    title: "Active Sprints",
-                    value: activeSprints.toString(),
-                    icon: Icons.directions_run,
-                    color: Colors.green,
-                  )),
+                  Expanded(
+                    child: _buildStatCard(
+                      title: "Active Sprints",
+                      value: activeSprints.toString(),
+                      icon: Icons.directions_run,
+                      color: Colors.green,
+                    ),
+                  ),
                   const SizedBox(width: 24),
-                  Expanded(child: _buildStatCard(
-                    title: "Total Backlog",
-                    value: totalStories.toString(),
-                    icon: Icons.list_alt,
-                    color: Colors.blue,
-                  )),
+                  Expanded(
+                    child: _buildStatCard(
+                      title: "Total Userstories",
+                      value: totalStories.toString(),
+                      icon: Icons.list_alt,
+                      color: Colors.blue,
+                    ),
+                  ),
                 ],
               );
             },
@@ -146,7 +160,7 @@ class SummaryView extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  "Tiến độ Backlog",
+                  "Tiến độ",
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
@@ -160,7 +174,9 @@ class SummaryView extends StatelessWidget {
                     value: progress,
                     minHeight: 12,
                     backgroundColor: const Color(0xFFDFE1E6),
-                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Colors.green,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -169,13 +185,24 @@ class SummaryView extends StatelessWidget {
                   runSpacing: 12,
                   alignment: WrapAlignment.spaceBetween,
                   children: [
-                    _buildProgressLegend("To Do", todoStories, const Color(0xFFDFE1E6)),
-                    _buildProgressLegend("In Progress", inProgressStories, Colors.blue),
+                    _buildProgressLegend(
+                      "To Do",
+                      todoStories,
+                      const Color(0xFFDFE1E6),
+                    ),
+                    _buildProgressLegend(
+                      "In Progress",
+                      inProgressStories,
+                      Colors.blue,
+                    ),
                     _buildProgressLegend("Done", doneStories, Colors.green),
                     Text(
                       "${(progress * 100).toStringAsFixed(1)}% Hoàn thành",
-                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
-                    )
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -186,7 +213,12 @@ class SummaryView extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCard({required String title, required String value, required IconData icon, required Color color}) {
+  Widget _buildStatCard({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -199,9 +231,7 @@ class SummaryView extends StatelessWidget {
             offset: const Offset(0, 4),
           ),
         ],
-        border: Border(
-          bottom: BorderSide(color: color, width: 4),
-        ),
+        border: Border(bottom: BorderSide(color: color, width: 4)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -237,9 +267,16 @@ class SummaryView extends StatelessWidget {
   Widget _buildProgressLegend(String label, int count, Color color) {
     return Row(
       children: [
-        Container(width: 12, height: 12, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
         const SizedBox(width: 8),
-        Text("$label ($count)", style: const TextStyle(fontSize: 14, color: Color(0xFF5E6C84))),
+        Text(
+          "$label ($count)",
+          style: const TextStyle(fontSize: 14, color: Color(0xFF5E6C84)),
+        ),
       ],
     );
   }

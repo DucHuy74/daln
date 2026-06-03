@@ -1,4 +1,5 @@
 // lib/views/backlog/workspace_backlog_view.dart
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../models/home/workspace_model.dart';
 import '../../models/backlog/sprint_model.dart';
@@ -54,23 +55,45 @@ class _WorkspaceBacklogViewState extends State<WorkspaceBacklogView> {
 
   void _handleCreateStory(String text) async {
     if (text.trim().isEmpty) return;
-    
-    // Tách các story dựa vào newline hoặc ', As a'
-    List<String> rawStories = text.split(RegExp(r'\n+'));
-    if (rawStories.length == 1 && text.contains(', As a')) {
-      rawStories = text.split(RegExp(r',\s*(?=As a)'));
+
+    List<String> validStories = [];
+
+    // Thử parse nếu nội dung là một mảng JSON từ Postman
+    try {
+      final parsed = jsonDecode(text.trim());
+      if (parsed is List) {
+        for (var item in parsed) {
+          if (item is Map && item.containsKey('storyText')) {
+            String st = item['storyText'].toString().trim();
+            if (st.isNotEmpty) validStories.add(st);
+          }
+        }
+      }
+    } catch (_) {
+      // Bỏ qua lỗi parse, tiếp tục với cách tách dòng bình thường
     }
 
-    bool allSuccess = true;
-    for (String raw in rawStories) {
-      String storyText = raw.trim();
-      if (storyText.isEmpty) continue;
-      
-      final success = await _viewModel.createStory(widget.workspace.id, storyText);
-      if (!success) {
-        allSuccess = false;
+    // Nếu không phải JSON hợp lệ hoặc mảng trống, fallback về cách chia dòng (newline hoặc comma)
+    if (validStories.isEmpty) {
+      List<String> rawStories = text.split(RegExp(r'\n+'));
+      if (rawStories.length == 1 && text.contains(', As a')) {
+        rawStories = text.split(RegExp(r',\s*(?=As a)'));
+      }
+      for (String raw in rawStories) {
+        String storyText = raw.trim();
+        if (storyText.isNotEmpty) {
+          validStories.add(storyText);
+        }
       }
     }
+
+    if (validStories.isEmpty) return;
+
+    // Gửi toàn bộ story texts xuống backend trong 1 request
+    final allSuccess = await _viewModel.createMultipleStories(
+      widget.workspace.id,
+      validStories,
+    );
 
     if (mounted) {
       if (allSuccess) {

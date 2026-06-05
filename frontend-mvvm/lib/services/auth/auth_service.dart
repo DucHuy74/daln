@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
-import 'dart:html' as html;
+import 'package:universal_html/html.dart' as html;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'token_storage.dart';
 import 'token_storage_mobile.dart';
@@ -13,7 +13,7 @@ class AuthService {
 
   final String _clientId = 'nckh_app';
   final String _clientSecret = dotenv.env['Client_Secret'] ?? '';
-  final String _issuer = 'http://localhost:8180/realms/nckh';
+  final String _issuer = 'http://192.168.100.92:8180/realms/nckh';
 
   late final TokenStorage _storage = kIsWeb
       ? WebTokenStorage()

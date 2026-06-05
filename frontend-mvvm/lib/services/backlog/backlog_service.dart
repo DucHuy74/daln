@@ -5,8 +5,10 @@ import '../auth/auth_service.dart';
 import '../../models/backlog/user_story_model.dart';
 import '../../mockdata/backlog/user_story_dataset.dart';
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 class BacklogService {
-  static const String _baseUrl = 'http://localhost:8080/api';
+  static String get _baseUrl => dotenv.env['BASE_URL'] ?? 'http://localhost:8080/api';
 
   Future<List<UserStoryModel>> getBacklog(String workspaceId) async {
     try {

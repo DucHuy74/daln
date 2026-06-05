@@ -5,8 +5,10 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../auth/auth_service.dart';
 import '../../mockdata/backlog/graph_dataset.dart';
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 class GraphService {
-  static const String _baseUrl = 'http://localhost:8080/api';
+  static String get _baseUrl => dotenv.env['BASE_URL'] ?? 'http://localhost:8080/api';
 
   Future<Map<String, dynamic>?> getBacklogGraph(
     String workspaceId,

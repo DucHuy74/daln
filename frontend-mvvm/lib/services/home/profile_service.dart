@@ -4,8 +4,10 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../auth/auth_service.dart'; 
 import '../../models/home/user_profile_model.dart'; 
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 class ProfileService {
-  static const String _baseUrl = 'http://localhost:8080/api';
+  static String get _baseUrl => dotenv.env['BASE_URL'] ?? 'http://localhost:8080/api';
 
   Future<UserProfile> fetchUserProfile() async {
     final url = Uri.parse('$_baseUrl/my-profile');

@@ -11,12 +11,9 @@ class SprintGraphService {
     final token = await AuthService.instance.getValidAccessToken();
 
     String baseUrl;
-    if (kIsWeb) {
-      baseUrl = 'http://localhost:8080';
-    } else if (Platform.isAndroid) {
-      baseUrl = 'http://10.0.2.2:8080';
-    } else {
-      baseUrl = 'http://localhost:8080';
+    baseUrl = dotenv.env['BASE_URL']?.replaceFirst('/api', '') ?? 'http://localhost:8080';
+    if (baseUrl.endsWith('/')) {
+      baseUrl = baseUrl.substring(0, baseUrl.length - 1);
     }
 
     final url = Uri.parse('$baseUrl/api/graphql');

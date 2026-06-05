@@ -7,8 +7,10 @@ import '../../models/backlog/user_story_model.dart';
 import '../../mockdata/backlog/sprint_dataset.dart';
 import '../../mockdata/backlog/user_story_dataset.dart';
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 class SprintService {
-  static const String _baseUrl = 'http://localhost:8080/api';
+  static String get _baseUrl => dotenv.env['BASE_URL'] ?? 'http://localhost:8080/api';
 
   // --- Lấy danh sách Sprint ---
   Future<List<SprintModel>> getSprints(String workspaceId) async {

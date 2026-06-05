@@ -4,8 +4,10 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../auth/auth_service.dart';
 import '../../models/backlog/task_status.dart';
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 class UserStoryService {
-  static const String _baseUrl = 'http://localhost:8080/api'; 
+  static String get _baseUrl => dotenv.env['BASE_URL'] ?? 'http://localhost:8080/api'; 
 
   Future<bool> createUserStory({
     required String workspaceId,

@@ -7,8 +7,10 @@ import '../../models/backlog/member_model.dart';
 import '../../mockdata/home/workspace_dataset.dart';
 import '../../mockdata/backlog/member_dataset.dart';
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 class WorkspaceService {
-  static const String url = 'http://localhost:8080/api/workspace';
+  static String get url => '${dotenv.env['BASE_URL'] ?? 'http://localhost:8080/api'}/workspace';
 
   // --- Lấy workspace ---
   Future<List<WorkspaceModel>> getWorkspaces() async {
@@ -47,7 +49,7 @@ class WorkspaceService {
   }
 
   // --- Tạo workspace ---
-  static const String baseUrl = 'http://localhost:8080/api/workspace';
+  static String get baseUrl => '${dotenv.env['BASE_URL'] ?? 'http://localhost:8080/api'}/workspace';
 
   Future<WorkspaceResponse?> createWorkspace({
     required String name,

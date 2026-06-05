@@ -3,9 +3,10 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../auth/auth_service.dart';
 import '../../models/home/invitation_model.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class InvitationService {
-  static const String _baseUrl = 'http://localhost:8080/api';
+  static String get _baseUrl => dotenv.env['BASE_URL'] ?? 'http://localhost:8080/api';
 
   // [MỚI] Thêm tham số role
   Future<bool> sendInvites(

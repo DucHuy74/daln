@@ -2,6 +2,7 @@
 import 'dart:math';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/backlog/graph_model.dart';
@@ -13,6 +14,7 @@ import 'widgets/start_sprint_panel.dart';
 import 'widgets/node_tooltip.dart';
 import 'widgets/graph_node_widgets.dart';
 import '../../services/home/workspace_service.dart';
+import '../../services/backlog/userstory_service.dart';
 
 // =============================================================================
 // CLASS WRAPPER: BỌC PROVIDER
@@ -83,7 +85,9 @@ class _BacklogGraphScreenContent extends StatefulWidget {
 
 class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
     with SingleTickerProviderStateMixin {
-  final ValueNotifier<Map<String, Offset>> _positionsNotifier = ValueNotifier({});
+  final ValueNotifier<Map<String, Offset>> _positionsNotifier = ValueNotifier(
+    {},
+  );
   Set<String> edges = {};
 
   Set<String> expandedSubjects = {};
@@ -95,7 +99,79 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
   bool _isLassoMode = false;
   List<Offset> _drawnPoints = [];
   Set<String> _selectedNodeKeys = {};
-  
+
+  // --- FILTER STATE (dùng ValueNotifier để tránh rebuild cả cây) ---
+  final ValueNotifier<double> _priorityFilterNotifier = ValueNotifier(0.0);
+  bool _showFilterSlider = false;
+
+  // Cache: priority tối đa theo node key — tính 1 lần khi data load
+  Map<String, double> _nodeKeyPriorityCache = {};
+
+  // Cache: set dimmed nodes & edges — chỉ tính lại khi filter thay đổi
+  final ValueNotifier<Set<String>> _dimmedNodeKeysNotifier = ValueNotifier({});
+  final ValueNotifier<Set<String>> _dimmedEdgesNotifier = ValueNotifier({});
+
+  void _buildNodeKeyPriorityCache(List<AnalyzedStory> stories) {
+    _nodeKeyPriorityCache = {};
+
+    // Lấy termPriorities từ ViewModel (đã propagate qua PERFORM/TARGET)
+    final vm = context.read<GraphViewModel>();
+    final termPriorities = vm.termPriorities;
+
+    // Với mỗi story, gán priority cho sub/verb/obj key
+    // dựa trên termPriorities[termLabel] (termId = termLabel cho TERM nodes)
+    for (var s in stories) {
+      String subKey = 'sub_${s.subject}';
+      String verbKey = 'verb_${s.verb}';
+      String objKey = _isObjectASubject(s.object, stories)
+          ? 'sub_${s.object}'
+          : _makeObjectKey(s.object);
+
+      // Dùng termPriorities trước, rồi mới fallback về story-level priority, mặc định 0.0 nếu null
+      double subPri = termPriorities[s.subject] ?? s.subjectPriority ?? 0.0;
+      double verbPri = termPriorities[s.verb] ?? s.verbPriority ?? 0.0;
+      double objPri = termPriorities[s.object] ?? s.objectPriority ?? 0.0;
+
+      _nodeKeyPriorityCache[subKey] = max(
+        _nodeKeyPriorityCache[subKey] ?? 0.0,
+        subPri,
+      );
+      _nodeKeyPriorityCache[verbKey] = max(
+        _nodeKeyPriorityCache[verbKey] ?? 0.0,
+        verbPri,
+      );
+      _nodeKeyPriorityCache[objKey] = max(
+        _nodeKeyPriorityCache[objKey] ?? 0.0,
+        objPri,
+      );
+    }
+  }
+
+  void _updateDimmedSets(double threshold) {
+    if (threshold <= 0.0) {
+      _dimmedNodeKeysNotifier.value = {};
+      _dimmedEdgesNotifier.value = {};
+      return;
+    }
+
+    final Set<String> dimmedNodes = {};
+    for (var entry in _nodeKeyPriorityCache.entries) {
+      if (entry.value < threshold) dimmedNodes.add(entry.key);
+    }
+
+    final Set<String> dimmedEdges = {};
+    for (var edge in edges) {
+      final parts = edge.split('|');
+      if (parts.length == 2 &&
+          (dimmedNodes.contains(parts[0]) || dimmedNodes.contains(parts[1]))) {
+        dimmedEdges.add(edge);
+      }
+    }
+
+    _dimmedNodeKeysNotifier.value = dimmedNodes;
+    _dimmedEdgesNotifier.value = dimmedEdges;
+  }
+
   Offset? _nodeDragOffset;
 
   late AnimationController _spinController;
@@ -104,9 +180,13 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
 
   GraphTheme get theme => GraphTheme.of(context);
 
+  double get _priorityFilter => _priorityFilterNotifier.value;
+
   @override
   void initState() {
     super.initState();
+    _transformationController.value = Matrix4.identity();
+
     _spinController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
@@ -121,6 +201,9 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
   void dispose() {
     _spinController.dispose();
     _transformationController.dispose();
+    _priorityFilterNotifier.dispose();
+    _dimmedNodeKeysNotifier.dispose();
+    _dimmedEdgesNotifier.dispose();
     super.dispose();
   }
 
@@ -147,6 +230,9 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
           expandedSubjects.addAll(_getUniqueSubjects(vm.stories));
         }
         _calculateLayout(vm.stories);
+        // Xây dựng cache priority 1 lần duy nhất sau khi data load
+        _buildNodeKeyPriorityCache(vm.stories);
+        _updateDimmedSets(_priorityFilterNotifier.value);
       });
     }
   }
@@ -170,11 +256,11 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
     edges.clear();
 
     List<String> subjects = _getUniqueSubjects(stories);
-    const double subjectX = 150;
-    const double verbX = 420;
-    const double objectX = 720;
+    const double subjectX = 350;
+    const double verbX = 650;
+    const double objectX = 950;
 
-    double currentSubjectY = 140;
+    double currentSubjectY = 200;
     const double spacing = 120;
 
     for (var subName in subjects) {
@@ -204,13 +290,13 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
       edges.add("$verbKey|$targetKey");
     }
 
-    double currentVerbY = 140;
+    double currentVerbY = 200;
     for (var verbKey in uniqueVerbs) {
       newPositions[verbKey] = Offset(verbX, currentVerbY);
       currentVerbY += spacing;
     }
 
-    double currentObjY = 140;
+    double currentObjY = 200;
     for (var objKey in uniqueObjects) {
       newPositions[objKey] = Offset(objectX, currentObjY);
       currentObjY += spacing;
@@ -339,36 +425,49 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
                   panEnabled: !_isLassoMode,
                   scaleEnabled: !_isLassoMode,
                   constrained: false,
-                  boundaryMargin: const EdgeInsets.all(2000),
-                  minScale: 0.1,
-                  maxScale: 4.0,
+                  boundaryMargin: const EdgeInsets.all(300),
+                  minScale: 0.2,
+                  maxScale: 3.0,
                   child: GestureDetector(
                     onPanStart: _isLassoMode ? _onLassoPanStart : null,
                     onPanUpdate: _isLassoMode ? _onLassoPanUpdate : null,
                     onPanEnd: _isLassoMode ? _onLassoPanEnd : null,
-                    child: ValueListenableBuilder<Map<String, Offset>>(
-                      valueListenable: _positionsNotifier,
-                      builder: (context, positions, child) {
-                        return SizedBox(
-                          width: 2500,
-                          height: 2500,
-                          child: Stack(
-                            children: [
-                              AnimatedBuilder(
-                                animation: _spinController,
-                                builder: (_, __) => CustomPaint(
-                                  size: const Size(2500, 2500),
-                                  painter: GraphLinesPainter(
-                                    nodePositions: positions,
-                                    edges: edges,
-                                    highlightedEdges:
-                                        highlightedEdges, // Chuyền vào đây
-                                    theme: theme,
-                                  ),
-                                ),
-                              ),
-                              CustomPaint(
-                                size: const Size(2500, 2500),
+                    child: SizedBox(
+                      width: 2500,
+                      height: 5000,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          ValueListenableBuilder<Set<String>>(
+                            valueListenable: _dimmedEdgesNotifier,
+                            builder: (context, dimmedEdges, _) {
+                              return ValueListenableBuilder<
+                                Map<String, Offset>
+                              >(
+                                valueListenable: _positionsNotifier,
+                                builder: (context, positions, child) {
+                                  return AnimatedBuilder(
+                                    animation: _spinController,
+                                    builder: (_, __) => CustomPaint(
+                                      size: const Size(2500, 5000),
+                                      painter: GraphLinesPainter(
+                                        nodePositions: positions,
+                                        edges: edges,
+                                        highlightedEdges: highlightedEdges,
+                                        dimmedEdges: dimmedEdges,
+                                        theme: theme,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                          ValueListenableBuilder<Map<String, Offset>>(
+                            valueListenable: _positionsNotifier,
+                            builder: (context, positions, child) {
+                              return CustomPaint(
+                                size: const Size(2500, 5000),
                                 painter: ZoningPainter(
                                   nodePositions: positions,
                                   zonedSubjects: zonedSubjects,
@@ -378,20 +477,20 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
                                   makeObjectKey: _makeObjectKey,
                                   theme: theme,
                                 ),
-                              ),
-                              if (_isLassoMode && _drawnPoints.isNotEmpty)
-                                CustomPaint(
-                                  size: const Size(2500, 2500),
-                                  painter: LassoPainter(
-                                    drawnPoints: _drawnPoints,
-                                    theme: theme,
-                                  ),
-                                ),
-                              ..._buildNodeWidgets(vm.stories, positions),
-                            ],
+                              );
+                            },
                           ),
-                        );
-                      },
+                          if (_isLassoMode && _drawnPoints.isNotEmpty)
+                            CustomPaint(
+                              size: const Size(2500, 5000),
+                              painter: LassoPainter(
+                                drawnPoints: _drawnPoints,
+                                theme: theme,
+                              ),
+                            ),
+                          ..._buildNodeWidgets(vm.stories),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -431,12 +530,14 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
                       ),
                     ),
                   ),
+                if (_showFilterSlider)
+                  Positioned(right: 80, bottom: 32, child: _buildFilterPanel()),
               ],
             ),
     );
   }
 
-  List<Widget> _buildNodeWidgets(List<AnalyzedStory> stories, Map<String, Offset> positions) {
+  List<Widget> _buildNodeWidgets(List<AnalyzedStory> stories) {
     List<Widget> widgets = [];
     Set<String> renderedKeys = {};
 
@@ -450,21 +551,22 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
       }
     }
 
-    for (var key in positions.keys) {
+    for (var key in _positionsNotifier.value.keys) {
       if (renderedKeys.contains(key)) continue;
+
       renderedKeys.add(key);
 
       if (key.startsWith("sub_")) {
         String name = key.replaceFirst("sub_", "");
-        widgets.add(_buildNode(key, name, NodeType.subject, null, stories, positions[key]!));
+        widgets.add(_buildNode(key, name, NodeType.subject, null, stories));
       } else if (key.startsWith("verb_")) {
         String name = key.replaceFirst("verb_", "");
         AnalyzedStory? repStory = findRepresentativeStory(name, true);
-        widgets.add(_buildNode(key, name, NodeType.verb, repStory, stories, positions[key]!));
+        widgets.add(_buildNode(key, name, NodeType.verb, repStory, stories));
       } else if (key.startsWith("obj_")) {
         String name = key.replaceFirst("obj_", "");
         AnalyzedStory? repStory = findRepresentativeStory(name, false);
-        widgets.add(_buildNode(key, name, NodeType.object, repStory, stories, positions[key]!));
+        widgets.add(_buildNode(key, name, NodeType.object, repStory, stories));
       }
     }
 
@@ -477,7 +579,6 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
     NodeType type,
     AnalyzedStory? story,
     List<AnalyzedStory> stories,
-    Offset pos,
   ) {
     double width = type == NodeType.verb ? 64 : 110;
     double height = type == NodeType.verb
@@ -486,13 +587,32 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
 
     bool isHovered = _hoveredNodeKey == key;
     bool isSelected = _selectedNodeKeys.contains(key);
+
+    bool isActive = true;
+    if (_hoveredNodeKey != null) {
+      if (_hoveredNodeKey == key) {
+        isActive = true;
+      } else {
+        isActive =
+            edges.contains("$key|$_hoveredNodeKey") ||
+            edges.contains("$_hoveredNodeKey|$key");
+      }
+    }
+
     int storyCount = type == NodeType.object
         ? _countStoriesForObject(text, stories)
         : 0;
 
-    return Positioned(
-      left: pos.dx - width / 2,
-      top: pos.dy - height / 2 - (type == NodeType.verb ? 12 : 0),
+    return ValueListenableBuilder<Map<String, Offset>>(
+      valueListenable: _positionsNotifier,
+      builder: (context, positions, child) {
+        final pos = positions[key] ?? Offset.zero;
+        return Positioned(
+          left: pos.dx - width / 2,
+          top: pos.dy - height / 2 - (type == NodeType.verb ? 12 : 0),
+          child: child!,
+        );
+      },
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -505,20 +625,26 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
             child: GestureDetector(
               onPanStart: (d) {
                 if (!_isZoningMode && !_isLassoMode) {
-                  final RenderBox renderBox = context.findRenderObject() as RenderBox;
+                  final RenderBox renderBox =
+                      context.findRenderObject() as RenderBox;
                   final localPos = renderBox.globalToLocal(d.globalPosition);
-                  final scenePoint = _transformationController.toScene(localPos);
-                  // Lưu lại khoảng cách từ tâm node đến con trỏ chuột
+                  final scenePoint = _transformationController.toScene(
+                    localPos,
+                  );
+                  final pos = _positionsNotifier.value[key] ?? Offset.zero;
                   _nodeDragOffset = pos - scenePoint;
                 }
               },
               onPanUpdate: (d) {
-                if (!_isZoningMode && !_isLassoMode && _nodeDragOffset != null) {
-                  final RenderBox renderBox = context.findRenderObject() as RenderBox;
+                if (!_isZoningMode &&
+                    !_isLassoMode &&
+                    _nodeDragOffset != null) {
+                  final RenderBox renderBox =
+                      context.findRenderObject() as RenderBox;
                   final localPos = renderBox.globalToLocal(d.globalPosition);
-                  final scenePoint = _transformationController.toScene(localPos);
-                  
-                  // Chỉ gọi hàm update logic (không dùng setState để tránh rebuild cả InteractiveViewer)
+                  final scenePoint = _transformationController.toScene(
+                    localPos,
+                  );
                   _avoidCollision(key, scenePoint + _nodeDragOffset!);
                 }
               },
@@ -538,48 +664,61 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
                   _handleTap(key, text, type, story, stories);
                 }
               },
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  type == NodeType.subject
-                      ? GraphNodeWidgets.buildSubjectNode(
-                          text,
-                          width,
-                          height,
-                          isHovered,
-                          isSelected,
-                          theme,
-                        )
-                      : type == NodeType.verb
-                      ? GraphNodeWidgets.buildVerbNode(
-                          text,
-                          width,
-                          height,
-                          isHovered,
-                          isSelected,
-                          theme,
-                          _spinController,
-                        )
-                      : GraphNodeWidgets.buildObjectNode(
-                          text,
-                          story,
-                          width,
-                          height,
-                          isHovered,
-                          isSelected,
-                          theme,
-                        ),
-                  if (isHovered && type == NodeType.object)
-                    Positioned(
-                      left: width + 8,
-                      top: 0,
-                      child: NodeTooltip(
-                        objectName: text,
-                        count: storyCount,
-                        theme: theme,
-                      ),
+              // ValueListenableBuilder giúp ẩn hiện node lập tức khi kéo slider không cần setState
+              child: ValueListenableBuilder<Set<String>>(
+                valueListenable: _dimmedNodeKeysNotifier,
+                builder: (context, dimmedKeys, _) {
+                  if (dimmedKeys.contains(key)) {
+                    return const SizedBox.shrink(); // Ẩn hoàn toàn node
+                  }
+
+                  return Opacity(
+                    opacity: isActive ? 1.0 : 0.2,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        type == NodeType.subject
+                            ? GraphNodeWidgets.buildSubjectNode(
+                                text,
+                                width,
+                                height,
+                                isHovered,
+                                isSelected,
+                                theme,
+                              )
+                            : type == NodeType.verb
+                            ? GraphNodeWidgets.buildVerbNode(
+                                text,
+                                width,
+                                height,
+                                isHovered,
+                                isSelected,
+                                theme,
+                                _spinController,
+                              )
+                            : GraphNodeWidgets.buildObjectNode(
+                                text,
+                                story,
+                                width,
+                                height,
+                                isHovered,
+                                isSelected,
+                                theme,
+                              ),
+                        if (isHovered && type == NodeType.object)
+                          Positioned(
+                            left: width + 8,
+                            top: 0,
+                            child: NodeTooltip(
+                              objectName: text,
+                              count: storyCount,
+                              theme: theme,
+                            ),
+                          ),
+                      ],
                     ),
-                ],
+                  );
+                },
               ),
             ),
           ),
@@ -626,6 +765,8 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
       });
     } else if (type == NodeType.object && story != null) {
       _showActionMenu(context, story);
+    } else if (type == NodeType.verb && story != null) {
+      _showActionMenu(context, story);
     }
   }
 
@@ -666,6 +807,14 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
         ),
         const SizedBox(height: 10),
         _fabButton(
+          heroTag: "filter",
+          icon: Icons.filter_alt,
+          active: _showFilterSlider,
+          onPressed: () =>
+              setState(() => _showFilterSlider = !_showFilterSlider),
+        ),
+        const SizedBox(height: 10),
+        _fabButton(
           heroTag: "r",
           icon: Icons.refresh,
           onPressed: () async {
@@ -690,13 +839,11 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
                 await Future.delayed(const Duration(seconds: 3));
 
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('Cập nhật đồ thị thành công!'),
-                      backgroundColor: theme.doneColor,
-                    ),
+                  context.read<GraphViewModel>().fetchGraphData(
+                    widget.workspaceId,
+                    widget.backlogId,
+                    source: 'BATCH', // Gọi API batch để lấy kết quả
                   );
-                  _loadData(source: 'BATCH');
                 }
               }
             } else {
@@ -712,6 +859,57 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
           },
         ),
       ],
+    );
+  }
+
+  Widget _buildFilterPanel() {
+    return Container(
+      width: 280,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: theme.panelBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.panelBorder),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ValueListenableBuilder<double>(
+        valueListenable: _priorityFilterNotifier,
+        builder: (ctx, filterVal, _) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Filter by Priority (Hide < ${filterVal.toStringAsFixed(2)})',
+                style: TextStyle(
+                  color: theme.textPrimary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Slider(
+                value: filterVal,
+                min: 0.0,
+                max: 1.0,
+                activeColor: theme.verbBorder,
+                inactiveColor: theme.panelBorder,
+                onChanged: (v) {
+                  // Chỉ cập nhật ValueNotifier và dimmed sets
+                  // Không gọi setState → không rebuild toàn bộ tree!
+                  _priorityFilterNotifier.value = v;
+                  _updateDimmedSets(v);
+                },
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
@@ -735,75 +933,259 @@ class _BacklogGraphScreenContentState extends State<_BacklogGraphScreenContent>
     );
   }
 
+  Widget _buildDetailRow(String label, String value, GraphTheme theme) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 60,
+          child: Text(
+            label,
+            style: TextStyle(
+              color: theme.textSecondary,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: TextStyle(
+              color: theme.textPrimary,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   void _showActionMenu(BuildContext context, AnalyzedStory story) {
+    // Tính priority từ cache hoặc story
+    final double? priority =
+        _nodeKeyPriorityCache['obj_${story.object}'] ??
+        _nodeKeyPriorityCache['sub_${story.subject}'] ??
+        story.objectPriority ??
+        story.subjectPriority;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: theme.panelBg,
+      isScrollControlled: true,
       shape: RoundedRectangleBorder(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         side: BorderSide(color: theme.panelBorder),
       ),
-      builder: (c) => Container(
-        height: 250,
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              story.rawText,
-              style: TextStyle(
-                color: theme.textPrimary,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
+      builder: (c) => DraggableScrollableSheet(
+        initialChildSize: 0.55,
+        minChildSize: 0.35,
+        maxChildSize: 0.85,
+        expand: false,
+        builder: (_, scrollCtrl) => SingleChildScrollView(
+          controller: scrollCtrl,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _statusChip(story.status),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    '${story.subject} → ${story.verb} → ${story.object}',
-                    style: TextStyle(color: theme.textSecondary, fontSize: 13),
-                    overflow: TextOverflow.ellipsis,
+                // Handle bar
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: theme.panelBorder,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
+
+                // Header: S-V-O chip + status
+                Row(
+                  children: [
+                    _statusChip(story.status),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        '${story.subject} → ${story.verb} → ${story.object}',
+                        style: TextStyle(
+                          color: theme.textSecondary,
+                          fontSize: 12,
+                          letterSpacing: 0.3,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Simple ID / Type / Priority display
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: theme.verbBorder.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: theme.verbBorder.withOpacity(0.2),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            size: 16,
+                            color: theme.verbBorder,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Node Details',
+                            style: TextStyle(
+                              color: theme.verbBorder,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      _buildDetailRow('ID', story.id, theme),
+                      const SizedBox(height: 8),
+                      _buildDetailRow('Type', 'S-V-O Path Node', theme),
+                      const SizedBox(height: 8),
+                      _buildDetailRow(
+                        'Priority',
+                        priority != null
+                            ? '${(priority * 100).toStringAsFixed(2)}%'
+                            : 'N/A',
+                        theme,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Priority bar
+                if (priority != null) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: priority.clamp(0.0, 1.0),
+                      minHeight: 6,
+                      backgroundColor: theme.panelBorder,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        priority > 0.6
+                            ? Colors.greenAccent.shade400
+                            : priority > 0.3
+                            ? Colors.orangeAccent
+                            : Colors.redAccent,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
+                // Story ID (copyable)
+                GestureDetector(
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: story.id));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('✓ Story ID copied to clipboard'),
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.panelBorder.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.fingerprint,
+                          size: 14,
+                          color: theme.textSecondary,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            story.id,
+                            style: TextStyle(
+                              color: theme.textSecondary,
+                              fontSize: 11,
+                              fontFamily: 'monospace',
+                              letterSpacing: 0.5,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Icon(Icons.copy, size: 13, color: theme.textSecondary),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Score info
+                if (story.performScore != null ||
+                    story.targetScore != null) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      if (story.performScore != null)
+                        _scoreChip(
+                          'Perform',
+                          story.performScore!,
+                          theme.subjectBorder,
+                        ),
+                      if (story.performScore != null &&
+                          story.targetScore != null)
+                        const SizedBox(width: 8),
+                      if (story.targetScore != null)
+                        _scoreChip(
+                          'Target',
+                          story.targetScore!,
+                          theme.verbBorder,
+                        ),
+                    ],
+                  ),
+                ],
               ],
             ),
-            const SizedBox(height: 12),
-            if (story.objectPriority != null)
-              Text(
-                'Priority: ${(story.objectPriority! * 100).toStringAsFixed(1)}%',
-                style: TextStyle(
-                  color: theme.subjectBorder,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            if (story.performScore != null || story.targetScore != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 4.0),
-                child: Text(
-                  'Score: ${story.performScore?.toStringAsFixed(2) ?? '-'} (Perform) / ${story.targetScore?.toStringAsFixed(2) ?? '-'} (Target)',
-                  style: TextStyle(color: theme.verbBorder, fontSize: 13),
-                ),
-              ),
-            if (story.performConfidence != null ||
-                story.targetConfidence != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 4.0),
-                child: Text(
-                  'Confidence: ${(story.performConfidence != null ? (story.performConfidence! * 100).toStringAsFixed(1) : '-')} % / ${(story.targetConfidence != null ? (story.targetConfidence! * 100).toStringAsFixed(1) : '-')} %',
-                  style: TextStyle(color: theme.textSecondary, fontSize: 13),
-                ),
-              ),
-            const SizedBox(height: 12),
-            Text(
-              'ID: ${story.id}',
-              style: TextStyle(color: theme.textSecondary, fontSize: 12),
-            ),
-          ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _scoreChip(String label, double score, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Text(
+        '$label: ${score.toStringAsFixed(2)}',
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

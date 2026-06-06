@@ -3,9 +3,12 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../auth/auth_service.dart';
+import '../../mockdata/backlog/graph_dataset.dart';
+
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class GraphService {
-  static const String _baseUrl = 'http://localhost:8080/api';
+  static String get _baseUrl => dotenv.env['BASE_URL'] ?? 'http://localhost:8080/api';
 
   Future<Map<String, dynamic>?> getBacklogGraph(
     String workspaceId,
@@ -20,10 +23,7 @@ class GraphService {
     final useMock = dotenv.env['USE_MOCK'] == 'true';
     if (useMock) {
       await Future.delayed(const Duration(seconds: 1));
-      return {
-        'nodes': [],
-        'edges': []
-      };
+      return GraphDataset.mockWorkspaceGraph;
     }
 
     final query =
@@ -94,6 +94,45 @@ class GraphService {
       }
     } catch (e) {
       print('Exception fetching graph: $e');
+      return null;
+    }
+  }
+
+  Future<List<dynamic>?> getBacklogUserStories(
+      String workspaceId, String backlogId) async {
+    try {
+      final token = await AuthService.instance.getValidAccessToken();
+      // Dùng backlogId làm query param nếu có (không rỗng)
+      final baseUrl = '$_baseUrl/user-stories/workspace/$workspaceId/backlog';
+      final url = backlogId.isNotEmpty
+          ? Uri.parse('$baseUrl?backlogId=$backlogId')
+          : Uri.parse(baseUrl);
+
+      print('DEBUG UserStories URL: $url');
+
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      print('DEBUG UserStories Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(utf8.decode(response.bodyBytes));
+        final list = data['result'] as List<dynamic>?;
+        print('DEBUG UserStories Count: ${list?.length ?? 0}');
+        if (list != null && list.isNotEmpty) {
+          print('DEBUG First story ID: ${list.first['id']} | text: ${list.first['storyText']}');
+        }
+        return list;
+      }
+      print('DEBUG UserStories Error body: ${response.body.substring(0, response.body.length.clamp(0, 200))}');
+      return null;
+    } catch (e) {
+      print('REST Error: $e');
       return null;
     }
   }

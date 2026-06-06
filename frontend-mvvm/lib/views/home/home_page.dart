@@ -93,6 +93,7 @@ class _HomePageState extends State<HomePage> {
               ? TaskFlowDrawer(
                   selectedMenu: _selectedMenu,
                   onMenuSelected: _onMenuSelected,
+                  workspaces: _viewModel.workspaces,
                 )
               : null,
 

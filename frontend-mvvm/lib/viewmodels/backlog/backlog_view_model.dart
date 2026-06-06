@@ -51,6 +51,27 @@ class BacklogViewModel extends ChangeNotifier {
     return success;
   }
 
+  Future<bool> createMultipleStories(String workspaceId, List<String> texts) async {
+    if (texts.isEmpty) return false;
+
+    _isLoading = true;
+    notifyListeners();
+
+    final success = await _backlogService.createMultipleUserStories(
+      workspaceId: workspaceId,
+      storyTexts: texts,
+    );
+
+    if (success) {
+      await fetchBacklog(workspaceId);
+    } else {
+      _isLoading = false;
+      notifyListeners();
+    }
+
+    return success;
+  }
+
   Future<void> fetchSprints(String workspaceId) async {
     final sprints = await _sprintService.getSprints(workspaceId);
     _sprintList = sprints;

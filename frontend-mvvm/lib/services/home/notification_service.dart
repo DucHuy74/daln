@@ -5,8 +5,10 @@ import '../auth/auth_service.dart';
 import '../../models/home/notification_model.dart';
 import '../../mockdata/home/notification_dataset.dart';
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 class NotificationService {
-  static const String _baseUrl = 'http://localhost:8080/api';
+  static String get _baseUrl => dotenv.env['BASE_URL'] ?? 'http://localhost:8080/api';
 
   // 1. Lấy danh sách thông báo chưa đọc
   Future<List<NotificationModel>> getUnreadNotifications() async {

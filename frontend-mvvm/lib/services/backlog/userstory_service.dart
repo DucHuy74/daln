@@ -4,8 +4,10 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../auth/auth_service.dart';
 import '../../models/backlog/task_status.dart';
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 class UserStoryService {
-  static const String _baseUrl = 'http://localhost:8080/api'; 
+  static String get _baseUrl => dotenv.env['BASE_URL'] ?? 'http://localhost:8080/api'; 
 
   Future<bool> createUserStory({
     required String workspaceId,
@@ -45,6 +47,36 @@ class UserStoryService {
       print('Exception: $e');
       return false; 
     }
+  }
+
+  /// Lấy chi tiết một User Story theo ID
+  Future<Map<String, dynamic>?> getUserStoryById(String id) async {
+    final url = Uri.parse('$_baseUrl/user-stories/$id');
+    try {
+      final token = await AuthService.instance.getValidAccessToken();
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+          'x-api-key': dotenv.env['API_KEY'] ?? '',
+        },
+      );
+      if (response.statusCode == 200) {
+        // Có thể backend bọc trong { result: {...} } hoặc trả trực tiếp object
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        if (data is Map<String, dynamic>) {
+          if (data.containsKey('result')) {
+            return data['result'];
+          }
+          return data;
+        }
+      }
+      print('DEBUG getUserStoryById Error: ${response.statusCode} ${response.body}');
+    } catch (e) {
+      print('Exception fetching user story by id: $e');
+    }
+    return null;
   }
 
   /// Hàm cập nhật trạng thái User Story

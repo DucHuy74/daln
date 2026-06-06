@@ -9,12 +9,14 @@ class GraphLinesPainter extends CustomPainter {
   final Map<String, Offset> nodePositions;
   final Set<String> edges;
   final Set<String> highlightedEdges;
+  final Set<String>? dimmedEdges;
   final GraphTheme theme;
 
   GraphLinesPainter({
     required this.nodePositions,
     required this.edges,
     required this.highlightedEdges,
+    this.dimmedEdges,
     required this.theme,
   });
 
@@ -35,6 +37,10 @@ class GraphLinesPainter extends CustomPainter {
       Offset toCenter = nodePositions[toKey]!;
 
       bool isHighlighted = highlightedEdges.contains(edge);
+      bool isDimmed = dimmedEdges?.contains(edge) ?? false;
+      
+      // Nếu cạnh bị mờ (do filter), ta ẨN hoàn toàn (không vẽ)
+      if (isDimmed) continue;
 
       final paint = Paint()
         ..color = isHighlighted

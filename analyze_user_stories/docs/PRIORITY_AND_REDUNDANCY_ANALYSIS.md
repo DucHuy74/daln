@@ -623,4 +623,3 @@ sequenceDiagram
 
 ---
 
-*Tài liệu sinh theo kế hoạch phân tích Priority & Redundancy — cập nhật khi thay đổi logic trong `priority_service.py` / `redundancy_classification_service.py`.*
